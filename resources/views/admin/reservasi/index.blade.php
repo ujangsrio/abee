@@ -6,6 +6,12 @@
         Manajemen Reservasi - Aretha Beauty
     </h1>
 
+    @if(session('success'))
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+            {{ session('success') }}
+        </div>
+    @endif
+
     <div class="max-w-6xl mx-auto bg-white shadow-md rounded-none p-6 border border-purple-100">
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm text-left border border-gray-300 rounded-md overflow-hidden">
@@ -17,7 +23,9 @@
                         <th class="py-3 px-4 border">Layanan</th>
                         <th class="py-3 px-4 border">Jadwal</th>
                         <th class="py-3 px-4 border">Bukti Transfer</th>
-                        <th class="py-3 px-4 border">Status</th>
+                        <th class="py-3 px-4 border">Status DP</th>
+                        <th class="py-3 px-4 border">Status Reservasi</th>
+                        <th class="py-3 px-4 border">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
@@ -40,6 +48,38 @@
                                 @endif
                             </td>
                             <td class="py-3 px-4 border">
+                                <div class="flex flex-col space-y-2">
+                                    <span class="px-2 py-1 rounded text-xs font-medium
+                                        {{ $r->dp_status === 'Belum' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800' }}">
+                                        {{ $r->dp_status === 'Belum' ? 'Belum DP' : 'DP Lunas' }}
+                                    </span>
+                                    @if($r->dp_status === 'Belum' && $r->bukti_transfer)
+                                        <div class="flex space-x-1">
+                                            <form action="{{ route('admin.reservasi.confirmDp', $r->id) }}" method="POST" class="inline">
+                                                @csrf
+                                                <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">
+                                                    ✓ Konfirmasi
+                                                </button>
+                                            </form>
+                                            <form action="{{ route('admin.reservasi.rejectDp', $r->id) }}" method="POST" class="inline">
+                                                @csrf
+                                                <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs">
+                                                    ✗ Tolak
+                                                </button>
+                                            </form>
+                                        </div>
+                                    @endif
+                                </div>
+                            </td>
+                            <td class="py-3 px-4 border">
+                                <span class="px-2 py-1 rounded text-xs font-medium
+                                    {{ $r->status === 'Menunggu' ? 'bg-yellow-100 text-yellow-800' : 
+                                       ($r->status === 'Dikonfirmasi' ? 'bg-green-100 text-green-800' : 
+                                       ($r->status === 'Dibatalkan' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800')) }}">
+                                    {{ ucfirst($r->status) }}
+                                </span>
+                            </td>
+                            <td class="py-3 px-4 border">
                                 <form action="{{ route('admin.reservasi.updateStatus', $r->id) }}" method="POST" class="flex items-center space-x-2">
                                     @csrf
                                     @method('PATCH')
@@ -50,14 +90,14 @@
                                         <option value="Selesai" {{ $r->status == 'Selesai' ? 'selected' : '' }}>Selesai</option>
                                     </select>
                                     <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs">
-                                        Simpan
+                                        Update
                                     </button>
                                 </form>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center py-6 text-gray-500 italic">Tidak ada reservasi ditemukan.</td>
+                            <td colspan="8" class="text-center py-6 text-gray-500 italic">Tidak ada reservasi ditemukan.</td>
                         </tr>
                     @endforelse
                 </tbody>

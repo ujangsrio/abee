@@ -88,6 +88,8 @@ Route::middleware(['auth:admin', IsAdmin::class])
         Route::post('/reservasi/{id}/terima', [ReservasiController::class, 'terima'])->name('reservasi.terima');
         Route::post('/reservasi/{id}/tolak', [ReservasiController::class, 'tolak'])->name('reservasi.tolak');
         Route::patch('/reservasi/{id}/update-status', [ReservasiController::class, 'updateStatus'])->name('reservasi.updateStatus');
+        Route::post('/reservasi/{id}/confirm-dp', [ReservasiController::class, 'confirmDp'])->name('reservasi.confirmDp');
+        Route::post('/reservasi/{id}/reject-dp', [ReservasiController::class, 'rejectDp'])->name('reservasi.rejectDp');
 
         Route::get('/pengaturan', [PengaturanController::class, 'index'])->name('pengaturan.index');
         Route::post('/pengaturan', [PengaturanController::class, 'update'])->name('pengaturan.update');
@@ -125,6 +127,7 @@ Route::middleware(['web', 'auth:customer', IsCustomer::class])
         Route::get('/booking', [BookingController::class, 'create'])->name('booking.create');
         Route::post('/booking', [BookingController::class, 'store'])->name('booking.store');
         Route::get('/available-times', [BookingController::class, 'availableTimes'])->name('booking.availableTimes');
+        Route::get('/calculate-cost', [BookingController::class, 'calculateTotalCost'])->name('booking.calculateCost');
         Route::get('/booking/jam-tersedia-by-tanggal', [BookingController::class, 'availableTimesByDate'])->name('customer.booking.timesByDate');
         Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
         Route::delete('/booking/{id}/cancel', [BookingController::class, 'cancel'])->name('booking.cancel');

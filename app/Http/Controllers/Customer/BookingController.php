@@ -6,8 +6,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Customer;
-use App\Models\CustomerBooking;  
-use App\Models\Layanan;  
+use App\Models\CustomerBooking;
+use App\Models\Layanan;
 use App\Models\Slot;
 
 class BookingController extends Controller
@@ -34,6 +34,7 @@ class BookingController extends Controller
         $request->validate([
             'service_id' => 'required|exists:layanans,id',
             'time' => 'required|date_format:H:i',
+            'payment_type' => 'required|in:dp,full',
             'bukti_transfer' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', // validasi file
         ]);
 
@@ -65,6 +66,9 @@ class BookingController extends Controller
             $buktiPath = $request->file('bukti_transfer')->store('bukti', 'public');
         }
 
+        // Tentukan dp_status berdasarkan jenis pembayaran
+        $dpStatus = ($request->payment_type === 'full') ? 'Lunas' : 'Belum';
+
         CustomerBooking::create([
             'customer_id' => $customer->id,
             'customer_name' => $customer->name,
@@ -73,9 +77,15 @@ class BookingController extends Controller
             'time' => $request->time,
             'status' => 'Menunggu',
             'bukti_transfer' => $buktiPath, // simpan path bukti transfer
+            'payment_type' => $request->payment_type,
+            'dp_status' => $dpStatus,
         ]);
 
-        return redirect()->route('customer.reservasiaktif')->with('success', 'Booking berhasil!');
+        $message = $request->payment_type === 'full' ?
+            'Booking berhasil! Pembayaran lunas sudah diterima.' :
+            'Booking berhasil! Menunggu konfirmasi pembayaran DP.';
+
+        return redirect()->route('customer.reservasiaktif')->with('success', $message);
     }
 
 
@@ -93,14 +103,14 @@ class BookingController extends Controller
 
         // Ambil semua slot yang cocok
         $slots = Slot::where('layanan_id', $serviceId)
-                    ->where('tanggal', $tanggal)
-                    ->pluck('jam');
+            ->where('tanggal', $tanggal)
+            ->pluck('jam');
 
         // Ambil jam yang sudah dibooking di tanggal tersebut
         $bookedTimes = CustomerBooking::where('service_id', $serviceId)
-                        ->where('date', $tanggal)
-                        ->pluck('time')
-                        ->toArray();
+            ->where('date', $tanggal)
+            ->pluck('time')
+            ->toArray();
 
         // Filter slot yang belum dibooking
         $availableSlots = $slots->filter(function ($jam) use ($bookedTimes) {
@@ -110,6 +120,54 @@ class BookingController extends Controller
         })->values();
 
         return response()->json($availableSlots);
+    }
+
+    // API: Hitung total biaya berdasarkan layanan
+    public function calculateTotalCost(Request $request)
+    {
+        $serviceId = $request->service_id;
+        $layanan = Layanan::with('promo')->find($serviceId);
+
+        if (!$layanan) {
+            return response()->json(['error' => 'Layanan tidak ditemukan'], 404);
+        }
+
+        $user = Auth::guard('customer')->user();
+        $customer = Customer::where('user_id', $user->id)->first();
+        $isMember = $customer && $customer->is_member;
+
+        $hargaLayanan = $layanan->harga;
+        $diskon = 0;
+        $totalSetelahDiskon = $hargaLayanan;
+
+        // Cek jika ada promo
+        if ($layanan->promo) {
+            $promo = $layanan->promo;
+            // Cek apakah promo berlaku (belum expired)
+            $isPromoValid = !$promo->tanggal_berakhir || now()->lte($promo->tanggal_berakhir);
+
+            if ($isPromoValid) {
+                // Cek apakah promo hanya untuk member atau untuk semua
+                if (!$promo->hanya_member || ($promo->hanya_member && $isMember)) {
+                    $diskon = ($promo->diskon / 100) * $hargaLayanan;
+                    $totalSetelahDiskon = $hargaLayanan - $diskon;
+                }
+            }
+        }
+
+        $dp = 50000; // DP tetap Rp50.000
+        $sisaPembayaran = max(0, $totalSetelahDiskon - $dp);
+
+        return response()->json([
+            'service_name' => $layanan->nama,
+            'base_price' => $hargaLayanan,
+            'discount' => $diskon,
+            'total_after_discount' => $totalSetelahDiskon,
+            'dp' => $dp,
+            'remaining_payment' => $sisaPembayaran,
+            'is_member' => $isMember,
+            'promo_name' => $layanan->promo ? $layanan->promo->nama_promo : null
+        ]);
     }
 
     public function show($id)
@@ -127,15 +185,81 @@ class BookingController extends Controller
             return back()->withErrors(['msg' => 'Data pelanggan tidak ditemukan.']);
         }
 
-        $bookings = CustomerBooking::with('service')
+        $bookings = CustomerBooking::with(['service', 'service.promo'])
             ->where('customer_id', $customerProfile->id)
             ->whereNotIn('status', ['Selesai', 'Dibatalkan'])
             ->orderBy('date', 'asc')
             ->get();
 
+        $isMember = $customerProfile->is_member ?? false;
+
+        // Hitung biaya untuk setiap booking
+        $bookingsWithCost = $bookings->map(function ($booking) use ($isMember) {
+            $layanan = $booking->service;
+
+            if (!$layanan) {
+                $booking->cost_info = [
+                    'base_price' => 0,
+                    'discount' => 0,
+                    'total_after_discount' => 0,
+                    'dp' => 50000,
+                    'remaining_payment' => 0,
+                    'promo_name' => null
+                ];
+                return $booking;
+            }
+
+            $hargaLayanan = $layanan->harga;
+            $diskon = 0;
+            $totalSetelahDiskon = $hargaLayanan;
+            $promoName = null;
+
+            // Cek jika ada promo
+            if ($layanan->promo) {
+                $promo = $layanan->promo;
+                // Cek apakah promo berlaku (belum expired)
+                $isPromoValid = !$promo->tanggal_berakhir || now()->lte($promo->tanggal_berakhir);
+
+                if ($isPromoValid) {
+                    // Cek apakah promo hanya untuk member atau untuk semua
+                    if (!$promo->hanya_member || ($promo->hanya_member && $isMember)) {
+                        $diskon = ($promo->diskon / 100) * $hargaLayanan;
+                        $totalSetelahDiskon = $hargaLayanan - $diskon;
+                        $promoName = $promo->nama_promo;
+                    }
+                }
+            }
+
+            $dp = 50000; // DP tetap Rp50.000
+
+            // Sisa pembayaran hanya dihitung jika DP sudah dikonfirmasi atau pembayaran full
+            $isDpConfirmed = $booking->dp_status === 'Lunas' || $booking->dp_status === 'Dikonfirmasi';
+            $isFullPayment = $booking->payment_type === 'full';
+
+            // Jika pembayaran full, sisa pembayaran = 0. Jika DP dan dikonfirmasi, hitung sisa
+            if ($isFullPayment) {
+                $sisaPembayaran = 0;
+            } else {
+                $sisaPembayaran = $isDpConfirmed ? max(0, $totalSetelahDiskon - $dp) : 0;
+            }
+
+            $booking->cost_info = [
+                'base_price' => $hargaLayanan,
+                'discount' => $diskon,
+                'total_after_discount' => $totalSetelahDiskon,
+                'dp' => $dp,
+                'remaining_payment' => $sisaPembayaran,
+                'promo_name' => $promoName,
+                'is_dp_confirmed' => $isDpConfirmed,
+                'is_full_payment' => $isFullPayment
+            ];
+
+            return $booking;
+        });
+
         return view('customer.reservasiaktif.index', [
-            'bookings' => $bookings,
-            'isMember' => $customerProfile->is_member ?? false,
+            'bookings' => $bookingsWithCost,
+            'isMember' => $isMember,
         ]);
     }
 

@@ -39,7 +39,7 @@ class ReservasiController extends Controller
         $booking->status = 'Dikonfirmasi';
         $booking->save();
 
-        return redirect()->back()->with('success', 'Reservasi telah dikonfirmasi dan disimpan.');
+        return redirect()->route('admin.reservasi.index')->with('success', 'Reservasi telah dikonfirmasi dan disimpan.');
     }
 
     public function tolak($id)
@@ -48,7 +48,7 @@ class ReservasiController extends Controller
         $reservasi->status = 'Dibatalkan';
         $reservasi->save();
 
-        return redirect()->back()->with('success', 'Reservasi telah ditolak.');
+        return redirect()->route('admin.reservasi.index')->with('success', 'Reservasi telah ditolak.');
     }
 
     public function updateStatus(Request $request, $id)
@@ -61,7 +61,24 @@ class ReservasiController extends Controller
         $reservasi->status = $request->status;
         $reservasi->save();
 
-        return redirect()->back()->with('success', 'Status reservasi berhasil diperbarui.');
+        return redirect()->route('admin.reservasi.index')->with('success', 'Status reservasi berhasil diperbarui.');
     }
 
+    public function confirmDp($id)
+    {
+        $booking = CustomerBooking::findOrFail($id);
+        $booking->dp_status = 'Lunas';
+        $booking->save();
+
+        return redirect()->route('admin.reservasi.index')->with('success', 'Pembayaran DP telah dikonfirmasi.');
+    }
+
+    public function rejectDp($id)
+    {
+        $booking = CustomerBooking::findOrFail($id);
+        $booking->dp_status = 'Belum';
+        $booking->save();
+
+        return redirect()->route('admin.reservasi.index')->with('success', 'Pembayaran DP ditolak.');
+    }
 }

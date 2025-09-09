@@ -18,6 +18,8 @@ class CustomerBooking extends Model
         'variasi',
         'bukti_transfer',
         'status',
+        'dp_status',
+        'payment_type',
     ];
 
     protected $casts = [
