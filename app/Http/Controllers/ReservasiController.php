@@ -67,7 +67,7 @@ class ReservasiController extends Controller
     public function confirmDp($id)
     {
         $booking = CustomerBooking::findOrFail($id);
-        $booking->dp_status = 'Lunas';
+        $booking->status_dp = 'Lunas';
         $booking->save();
 
         return redirect()->route('admin.reservasi.index')->with('success', 'Pembayaran DP telah dikonfirmasi.');
@@ -76,7 +76,7 @@ class ReservasiController extends Controller
     public function rejectDp($id)
     {
         $booking = CustomerBooking::findOrFail($id);
-        $booking->dp_status = 'Belum';
+        $booking->status_dp = 'Belum';
         $booking->save();
 
         return redirect()->route('admin.reservasi.index')->with('success', 'Pembayaran DP ditolak.');

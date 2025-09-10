@@ -71,19 +71,19 @@
 
             {{-- Opsi Pembayaran --}}
             <div id="paymentOption" style="display: none;">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Opsi Pembayaran</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Metode Pembayaran</label>
                 <div class="space-y-3">
                     <label class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
                         <input type="radio" name="payment_type" value="dp" class="mr-3" checked>
                         <div>
-                            <span class="text-sm font-medium">💳 DP (Down Payment)</span>
+                            <span class="text-sm font-medium">Bayar DP</span>
                             <p class="text-xs text-gray-600">Bayar DP Rp 50.000, sisa dibayar nanti</p>
                         </div>
                     </label>
                     <label class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
                         <input type="radio" name="payment_type" value="full" class="mr-3">
                         <div>
-                            <span class="text-sm font-medium">💰 Langsung Lunas</span>
+                            <span class="text-sm font-medium">Bayar Lunas</span>
                             <p class="text-xs text-gray-600">Bayar total biaya sekarang juga</p>
                         </div>
                     </label>
@@ -91,7 +91,7 @@
             </div>
 
             {{-- Rincian Biaya --}}
-            <div id="costBreakdown" class="bg-blue-50 border border-blue-200 rounded-md p-4" style="display: none;">
+            <div id="costBreakdown" class="bg-white-50 border border-white-200 rounded-md p-4" style="display: none;">
                 <h3 class="font-semibold text-blue-800 mb-3">Rincian Biaya</h3>
                 <div class="space-y-2 text-sm">
                     <div class="flex justify-between">
@@ -111,7 +111,7 @@
                         <span id="totalAfterDiscount">Rp -</span>
                     </div>
                     <div id="dpRow" class="flex justify-between text-orange-600">
-                        <span>DP (Uang Muka):</span>
+                        <span>Biaya DP :</span>
                         <span id="dpAmount">Rp 50.000</span>
                     </div>
                     <div id="remainingRow" class="flex justify-between text-purple-700 border-t pt-2">

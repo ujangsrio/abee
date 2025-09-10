@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('customer_bookings', function (Blueprint $table) {
-            $table->string('payment_type')->default('dp')->after('dp_status');
+            $table->string('status_dp')->default('Belum')->after('status');
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('customer_bookings', function (Blueprint $table) {
-            $table->dropColumn('payment_type');
+            $table->dropColumn('status_dp');
         });
     }
 };

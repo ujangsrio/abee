@@ -34,7 +34,7 @@ class BookingController extends Controller
         $request->validate([
             'service_id' => 'required|exists:layanans,id',
             'time' => 'required|date_format:H:i',
-            'payment_type' => 'required|in:dp,full',
+            'tipe_pembayaran' => 'required|in:dp,full',
             'bukti_transfer' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', // validasi file
         ]);
 
@@ -67,7 +67,7 @@ class BookingController extends Controller
         }
 
         // Tentukan dp_status berdasarkan jenis pembayaran
-        $dpStatus = ($request->payment_type === 'full') ? 'Lunas' : 'Belum';
+        $dpStatus = ($request->tipe_pembayaran === 'full') ? 'Lunas' : 'Belum';
 
         CustomerBooking::create([
             'customer_id' => $customer->id,
@@ -77,11 +77,11 @@ class BookingController extends Controller
             'time' => $request->time,
             'status' => 'Menunggu',
             'bukti_transfer' => $buktiPath, // simpan path bukti transfer
-            'payment_type' => $request->payment_type,
-            'dp_status' => $dpStatus,
+            'tipe_pembayaran' => $request->tipe_pembayaran,
+            'status_dp' => $dpStatus,
         ]);
 
-        $message = $request->payment_type === 'full' ?
+        $message = $request->tipe_pembayaran === 'full' ?
             'Booking berhasil! Pembayaran lunas sudah diterima.' :
             'Booking berhasil! Menunggu konfirmasi pembayaran DP.';
 
@@ -233,7 +233,7 @@ class BookingController extends Controller
             $dp = 50000; // DP tetap Rp50.000
 
             // Sisa pembayaran hanya dihitung jika DP sudah dikonfirmasi atau pembayaran full
-            $isDpConfirmed = $booking->dp_status === 'Lunas' || $booking->dp_status === 'Dikonfirmasi';
+            $isDpConfirmed = in_array($booking->dp_status, ['Lunas', 'Dikonfirmasi']);
             $isFullPayment = $booking->payment_type === 'full';
 
             // Jika pembayaran full, sisa pembayaran = 0. Jika DP dan dikonfirmasi, hitung sisa

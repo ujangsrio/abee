@@ -50,21 +50,21 @@
                             <td class="py-3 px-4 border">
                                 <div class="flex flex-col space-y-2">
                                     <span class="px-2 py-1 rounded text-xs font-medium
-                                        {{ $r->dp_status === 'Belum' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800' }}">
-                                        {{ $r->dp_status === 'Belum' ? 'Belum DP' : 'DP Lunas' }}
+                                        {{ $r->status_dp === 'Belum' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800' }}">
+                                        {{ $r->status_dp === 'Belum' ? 'Belum DP' : 'DP Lunas' }}
                                     </span>
-                                    @if($r->dp_status === 'Belum' && $r->bukti_transfer)
+                                    @if($r->status_dp === 'Belum' && $r->bukti_transfer)
                                         <div class="flex space-x-1">
                                             <form action="{{ route('admin.reservasi.confirmDp', $r->id) }}" method="POST" class="inline">
                                                 @csrf
                                                 <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">
-                                                    ✓ Konfirmasi
+                                                     Konfirmasi
                                                 </button>
                                             </form>
                                             <form action="{{ route('admin.reservasi.rejectDp', $r->id) }}" method="POST" class="inline">
                                                 @csrf
                                                 <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs">
-                                                    ✗ Tolak
+                                                     Tolak
                                                 </button>
                                             </form>
                                         </div>
