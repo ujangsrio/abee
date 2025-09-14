@@ -24,7 +24,7 @@
         <h4 class="text-base font-semibold text-purple-700"> {{ $booking->service->nama ?? 'Layanan Tidak Ditemukan' }}</h4>
         @if($booking->tipe_pembayaran === 'full')
         <span class="text-sm font-medium px-2 py-1 rounded bg-green-600 text-white">
-           Lunas
+          💰 Lunas
         </span>
         @else
         <span class="text-sm font-medium px-2 py-1 rounded 
@@ -61,8 +61,8 @@
         </div>
 
         {{-- Rincian Biaya --}}
-        <div class="mt-4 bg-white-50 border border-white-200 rounded-md p-3">
-          <h5 class="font-semibold text-blue-800 mb-2 text-sm">Rincian Biaya</h5>
+        <div class="mt-4 bg-blue-50 border border-blue-200 rounded-md p-3">
+          <h5 class="font-semibold text-blue-800 mb-2 text-sm">💰 Rincian Biaya</h5>
           <div class="space-y-1 text-xs">
             <div class="flex justify-between">
               <span class="text-gray-600">Harga Layanan:</span>
@@ -88,12 +88,12 @@
             </div>
             @else
             <div class="flex justify-between text-orange-600">
-              <span>Biaya DP :</span>
+              <span>DP (Uang Muka):</span>
               <span class="font-medium">
                 @if($booking->cost_info['is_dp_confirmed'])
                   ✅ Rp {{ number_format($booking->cost_info['dp'], 0, ',', '.') }} (Lunas DP)
                 @else
-                   Rp {{ number_format($booking->cost_info['dp'], 0, ',', '.') }} (Belum Dikonfirmasi)
+                  ⏳ Rp {{ number_format($booking->cost_info['dp'], 0, ',', '.') }} (Belum Dikonfirmasi)
                 @endif
               </span>
             </div>

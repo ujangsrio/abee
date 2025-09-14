@@ -233,8 +233,8 @@ class BookingController extends Controller
             $dp = 50000; // DP tetap Rp50.000
 
             // Sisa pembayaran hanya dihitung jika DP sudah dikonfirmasi atau pembayaran full
-            $isDpConfirmed = in_array($booking->dp_status, ['Lunas', 'Dikonfirmasi']);
-            $isFullPayment = $booking->payment_type === 'full';
+            $isDpConfirmed = in_array($booking->status_dp, ['Lunas', 'Dikonfirmasi']);
+            $isFullPayment = $booking->tipe_pembayaran === 'full';
 
             // Jika pembayaran full, sisa pembayaran = 0. Jika DP dan dikonfirmasi, hitung sisa
             if ($isFullPayment) {

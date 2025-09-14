@@ -71,19 +71,19 @@
 
             {{-- Opsi Pembayaran --}}
             <div id="paymentOption" style="display: none;">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Metode Pembayaran</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Opsi Pembayaran</label>
                 <div class="space-y-3">
                     <label class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
-                        <input type="radio" name="payment_type" value="dp" class="mr-3" checked>
+                        <input type="radio" name="tipe_pembayaran" value="dp" class="mr-3" checked>
                         <div>
-                            <span class="text-sm font-medium">Bayar DP</span>
+                            <span class="text-sm font-medium">💳 DP (Down Payment)</span>
                             <p class="text-xs text-gray-600">Bayar DP Rp 50.000, sisa dibayar nanti</p>
                         </div>
                     </label>
                     <label class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
-                        <input type="radio" name="payment_type" value="full" class="mr-3">
+                        <input type="radio" name="tipe_pembayaran" value="full" class="mr-3">
                         <div>
-                            <span class="text-sm font-medium">Bayar Lunas</span>
+                            <span class="text-sm font-medium">💰 Langsung Lunas</span>
                             <p class="text-xs text-gray-600">Bayar total biaya sekarang juga</p>
                         </div>
                     </label>
@@ -111,7 +111,7 @@
                         <span id="totalAfterDiscount">Rp -</span>
                     </div>
                     <div id="dpRow" class="flex justify-between text-orange-600">
-                        <span>Biaya DP :</span>
+                        <span>DP (Uang Muka):</span>
                         <span id="dpAmount">Rp 50.000</span>
                     </div>
                     <div id="remainingRow" class="flex justify-between text-purple-700 border-t pt-2">
@@ -234,7 +234,7 @@
         });
 
         // Handler untuk perubahan opsi pembayaran
-        $('input[name="payment_type"]').on('change', function() {
+        $('input[name="tipe_pembayaran"]').on('change', function() {
             updatePaymentDisplay();
         });
 
@@ -242,7 +242,7 @@
         function updatePaymentDisplay() {
             if (!window.costData) return;
             
-            const paymentType = $('input[name="payment_type"]:checked').val();
+            const paymentType = $('input[name="tipe_pembayaran"]:checked').val();
             const data = window.costData;
             
             if (paymentType === 'full') {
