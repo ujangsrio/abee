@@ -29,6 +29,8 @@ class LayananController extends Controller
             'deskripsi' => 'required|string|max:255',
             'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'promo_id' => 'nullable|exists:promos,id',
+            'service_types' => 'required|array|min:1',
+            'service_types.*' => 'required|in:studio,home_service',
             'slots' => 'required|array|min:1',
             'slots.*' => 'required|date_format:H:i',
         ]);
@@ -45,6 +47,7 @@ class LayananController extends Controller
             'deskripsi' => $request->deskripsi,
             'gambar' => $gambar ? basename($gambar) : null,
             'promo_id' => $request->promo_id,
+            'service_types' => $request->service_types, 
         ]);
 
         foreach ($request->slots as $jam) {
@@ -77,6 +80,8 @@ class LayananController extends Controller
             'deskripsi' => 'required|string|max:255',
             'gambar' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'promo_id' => 'nullable|exists:promos,id',
+            'service_types' => 'required|array|min:1',
+            'service_types.*' => 'required|in:studio,home_service',
             'slots' => 'required|array|min:1',
             'slots.*' => ['required', 'date_format:H:i'],
             'slot_ids' => 'nullable|array',
@@ -88,6 +93,7 @@ class LayananController extends Controller
             'tanggal' => $request->tanggal,
             'deskripsi' => $request->deskripsi,
             'promo_id' => $request->promo_id,
+            'tipe_layanan' => $request->tipe_layanan,
         ]);
 
         // Gambar baru (opsional)

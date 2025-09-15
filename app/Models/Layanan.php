@@ -17,6 +17,7 @@ class Layanan extends Model
         'gambar',
         'promo_id',
         'jam',
+        'tipe_layanan' => 'array',
     ];
 
     public function promo()

@@ -34,6 +34,7 @@ class BookingController extends Controller
         $request->validate([
             'service_id' => 'required|exists:layanans,id',
             'time' => 'required|date_format:H:i',
+            'tipe_layanan' => 'required|in:studio,home_service',
             'tipe_pembayaran' => 'required|in:dp,full',
             'bukti_transfer' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', // validasi file
         ]);
@@ -75,6 +76,7 @@ class BookingController extends Controller
             'service_id' => $request->service_id,
             'date' => $date,
             'time' => $request->time,
+            'tipe_layanan' => $request->tipe_layanan,
             'status' => 'Menunggu',
             'bukti_transfer' => $buktiPath, // simpan path bukti transfer
             'tipe_pembayaran' => $request->tipe_pembayaran,

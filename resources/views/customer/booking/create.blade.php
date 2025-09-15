@@ -69,6 +69,27 @@
                 @error('time') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
 
+            {{-- Tipe Layanan --}}
+            <div id="serviceTypeOption" style="display: none;">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Layanan</label>
+                <div class="space-y-3">
+                    <label class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
+                        <input type="radio" name="tipe_layanan" value="studio" class="mr-3" checked>
+                        <div>
+                            <span class="text-sm font-medium">Datang ke Studio</span>
+                            <p class="text-xs text-gray-600">Anda datang ke lokasi Aretha Beauty</p>
+                        </div>
+                    </label>
+                    <label class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
+                        <input type="radio" name="tipe_layanan" value="home_service" class="mr-3">
+                        <div>
+                            <span class="text-sm font-medium">Home Service</span>
+                            <p class="text-xs text-gray-600">Kami datang ke lokasi Anda</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
             {{-- Opsi Pembayaran --}}
             <div id="paymentOption" style="display: none;">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Opsi Pembayaran</label>
@@ -89,7 +110,7 @@
                     </label>
                 </div>
             </div>
-
+            
             {{-- Rincian Biaya --}}
             <div id="costBreakdown" class="bg-white-50 border border-white-200 rounded-md p-4" style="display: none;">
                 <h3 class="font-semibold text-blue-800 mb-3">Rincian Biaya</h3>
@@ -216,6 +237,10 @@
 
                     // Update biaya berdasarkan opsi pembayaran
                     updatePaymentDisplay();
+
+                    // Tampilkan tipe layanan dan opsi pembayaran
+                    $('#serviceTypeOption').show();
+                    $('#paymentOption').show();
                     
                     // Tampilkan opsi pembayaran dan rincian biaya
                     $('#paymentOption').show();
@@ -228,6 +253,7 @@
             } else {
                 // Sembunyikan rincian biaya jika tidak ada layanan dipilih
                 $('#costBreakdown').hide();
+                $('#serviceTypeOption').hide();
                 $('#paymentOption').hide();
                 $('#timeSelect').empty().append('<option value="">-- Pilih waktu --</option>');
             }

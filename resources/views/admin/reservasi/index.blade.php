@@ -21,10 +21,12 @@
                         <th class="py-3 px-4 border">Nama Pelanggan</th>
                         <th class="py-3 px-4 border">Kontak</th>
                         <th class="py-3 px-4 border">Layanan</th>
+                        <th class="py-3 px-4 border">Tipe Layanan</th>
                         <th class="py-3 px-4 border">Jadwal</th>
                         <th class="py-3 px-4 border">Bukti Transfer</th>
                         <th class="py-3 px-4 border">Status DP</th>
                         <th class="py-3 px-4 border">Status Reservasi</th>
+                        {{-- <th class="py-3 px-4 border">Status Pembayaran</th> --}}
                         <th class="py-3 px-4 border">Aksi</th>
                     </tr>
                 </thead>
@@ -35,6 +37,15 @@
                             <td class="py-3 px-4 border text-gray-800 font-medium">{{ $r->customer_name }}</td>
                             <td class="py-3 px-4 border text-gray-700">{{ $r->customer->whatsapp ?? '-' }}</td>
                             <td class="py-3 px-4 border text-gray-700">{{ $r->service->nama ?? '-' }}</td>
+                            <td class="py-3 px-4 border">
+                                @if($r->tipe_layanan)
+                                    <span class="inline-block text-xs px-2 py-1 rounded {{ $r->tipe_layanan === 'home_service' ? 'bg-blue-500 text-white' : 'bg-gray-500 text-white' }}">
+                                        {{ $r->tipe_layanan === 'home_service' ? ' Home Service' : ' Studio' }}
+                                    </span>
+                                @else
+                                    <span class="text-gray-500 text-sm">-</span>
+                                @endif
+                            </td>
                             <td class="py-3 px-4 border text-gray-700">
                                 {{ \Carbon\Carbon::parse($r->date . ' ' . $r->time)->translatedFormat('l, d F Y H:i') }}
                             </td>
@@ -49,22 +60,53 @@
                             </td>
                             <td class="py-3 px-4 border">
                                 <div class="flex flex-col space-y-2">
-                                    <span class="px-2 py-1 rounded text-xs font-medium
-                                        {{ $r->status_dp === 'Belum' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800' }}">
-                                        {{ $r->status_dp === 'Belum' ? 'Belum DP' : 'DP Lunas' }}
+                                    @php
+                                        $servicePrice = $r->service->harga ?? 0;
+                                        $dpAmount = 50000; // Fixed DP amount
+                                        $remainingAmount = 0;
+                                        
+                                        if ($r->tipe_pembayaran === 'dp') {
+                                            $remainingAmount = max(0, $servicePrice - $dpAmount);
+                                        }
+                                        
+                                        // Determine payment status
+                                        if ($r->tipe_pembayaran === 'full') {
+                                            $paymentStatus = 'Lunas';
+                                            $paymentClass = 'bg-green-100 text-green-800';
+                                        } elseif ($r->status_dp === 'Lunas' && $remainingAmount > 0) {
+                                            $paymentStatus = 'DP Lunas';
+                                            $paymentClass = 'bg-blue-100 text-blue-800';
+                                        } elseif ($r->status_dp === 'Belum') {
+                                            $paymentStatus = 'Belum DP';
+                                            $paymentClass = 'bg-yellow-100 text-yellow-800';
+                                        } else {
+                                            $paymentStatus = 'Lunas';
+                                            $paymentClass = 'bg-green-100 text-green-800';
+                                        }
+                                    @endphp
+                                    
+                                    <span class="px-2 py-1 rounded text-xs font-medium {{ $paymentClass }}">
+                                        {{ $paymentStatus }}
                                     </span>
+                                    
+                                    @if($remainingAmount > 0 && $r->status_dp === 'Lunas')
+                                        <div class="text-xs text-red-600 font-medium">
+                                            Kurang: Rp {{ number_format($remainingAmount, 0, ',', '.') }}
+                                        </div>
+                                    @endif
+                                    
                                     @if($r->status_dp === 'Belum' && $r->bukti_transfer)
                                         <div class="flex space-x-1">
                                             <form action="{{ route('admin.reservasi.confirmDp', $r->id) }}" method="POST" class="inline">
                                                 @csrf
                                                 <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs">
-                                                     Konfirmasi
+                                                    ✓ Konfirmasi
                                                 </button>
                                             </form>
                                             <form action="{{ route('admin.reservasi.rejectDp', $r->id) }}" method="POST" class="inline">
                                                 @csrf
                                                 <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs">
-                                                     Tolak
+                                                    ✗ Tolak
                                                 </button>
                                             </form>
                                         </div>
@@ -97,7 +139,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center py-6 text-gray-500 italic">Tidak ada reservasi ditemukan.</td>
+                            <td colspan="7" class="text-center py-6 text-gray-500 italic">Tidak ada reservasi ditemukan.</td>
                         </tr>
                     @endforelse
                 </tbody>

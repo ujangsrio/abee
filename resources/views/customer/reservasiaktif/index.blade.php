@@ -45,6 +45,13 @@
           <div class="font-medium">Jam:</div>
           <div>{{ $booking->time }}</div>
 
+          <div class="font-medium">Tipe Layanan:</div>
+          <div>
+            <span class="inline-block text-xs px-2 py-1 rounded {{ $booking->tipe_layanan === 'home_service' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white' }}">
+              {{ $booking->tipe_layanan === 'home_service' ? ' Home Service' : ' Datang ke Studio' }}
+            </span>
+          </div>
+
           <div class="font-medium">Status Reservasi:</div>
           <div>
             <span class="inline-block text-xs px-2 py-1 rounded bg-purple-500 text-white font-semibold">

@@ -72,6 +72,25 @@
             @endif
         </div>
 
+        {{-- Tipe Layanan --}}
+        <div>
+            <label class="block mb-1 font-medium text-gray-700">Tipe Layanan yang Tersedia</label>
+            <div class="space-y-2">
+                @php
+                    $currentServiceTypes = $layanan->tipe_layanan ?? ['studio', 'home_service'];
+                @endphp
+                <label class="flex items-center">
+                    <input type="checkbox" name="tipe_layanan[]" value="studio" class="mr-2" {{ in_array('studio', $currentServiceTypes) ? 'checked' : '' }}>
+                    <span> Datang ke Studio</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" name="tipe_layanan[]" value="home_service" class="mr-2" {{ in_array('home_service', $currentServiceTypes) ? 'checked' : '' }}>
+                    <span> Home Service</span>
+                </label>
+            </div>
+            <p class="text-xs text-gray-600 mt-1">Pilih minimal satu tipe layanan yang tersedia</p>
+        </div>
+
         {{-- Promo --}}
         <div>
             <label class="block mb-1 font-medium text-gray-700">Pilih Promo (Opsional)</label>

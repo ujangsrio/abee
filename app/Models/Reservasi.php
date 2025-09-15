@@ -7,6 +7,17 @@ use Illuminate\Database\Eloquent\Model;
 class Reservasi extends Model
 {
     //
+    protected $fillable = [
+        'pelanggan_id',
+        'layanan_id',
+        'tanggal',
+        'jam',
+        'harga',
+        'bukti_transfer',
+        'kontak',
+        'tipe_layanan',
+    ];
+
     public function pelanggan()
     {
         return $this->belongsTo(Pelanggan::class);

@@ -33,6 +33,7 @@ class ReservasiController extends Controller
             'harga'           => $booking->service->harga ?? 0,
             'bukti_transfer'  => $booking->bukti_transfer,
             'kontak'          => $booking->whatsapp,
+            'tipe_layanan'    => $booking->tipe_layanan,
         ]);
 
         // Ubah status di customer_booking jadi 'Dikonfirmasi'
