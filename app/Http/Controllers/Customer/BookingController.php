@@ -34,9 +34,8 @@ class BookingController extends Controller
         $request->validate([
             'service_id' => 'required|exists:layanans,id',
             'time' => 'required|date_format:H:i',
-            'tipe_layanan' => 'required|in:studio,home_service',
             'tipe_pembayaran' => 'required|in:dp,full',
-            'bukti_transfer' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', // validasi file
+            'bukti_transfer' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
         $user = Auth::guard('customer')->user();
@@ -47,6 +46,7 @@ class BookingController extends Controller
         }
 
         $layanan = Layanan::findOrFail($request->service_id);
+
         if (!$layanan->tanggal) {
             return back()->with('error', 'Layanan belum memiliki tanggal tersedia.');
         }
@@ -61,13 +61,14 @@ class BookingController extends Controller
             return back()->with('error', 'Jam tersebut sudah dibooking. Silakan pilih waktu lain.');
         }
 
-        // ⬇️ Upload file jika ada
+        // ⬇️ Ambil tipe layanan langsung dari model
+        $tipeLayanan = $layanan->tipe_layanan;
+
         $buktiPath = null;
         if ($request->hasFile('bukti_transfer')) {
             $buktiPath = $request->file('bukti_transfer')->store('bukti', 'public');
         }
 
-        // Tentukan dp_status berdasarkan jenis pembayaran
         $dpStatus = ($request->tipe_pembayaran === 'full') ? 'Lunas' : 'Belum';
 
         CustomerBooking::create([
@@ -76,19 +77,20 @@ class BookingController extends Controller
             'service_id' => $request->service_id,
             'date' => $date,
             'time' => $request->time,
-            'tipe_layanan' => $request->tipe_layanan,
+            'tipe_layanan' => $tipeLayanan, // ✅ auto dari admin
             'status' => 'Menunggu',
-            'bukti_transfer' => $buktiPath, // simpan path bukti transfer
+            'bukti_transfer' => $buktiPath,
             'tipe_pembayaran' => $request->tipe_pembayaran,
             'status_dp' => $dpStatus,
         ]);
 
-        $message = $request->tipe_pembayaran === 'full' ?
-            'Booking berhasil! Pembayaran lunas sudah diterima.' :
-            'Booking berhasil! Menunggu konfirmasi pembayaran DP.';
+        $message = $request->tipe_pembayaran === 'full'
+            ? 'Booking berhasil! Pembayaran lunas sudah diterima.'
+            : 'Booking berhasil! Menunggu konfirmasi pembayaran DP.';
 
         return redirect()->route('customer.reservasiaktif')->with('success', $message);
     }
+
 
 
     // API: Ambil jam tersedia
@@ -162,6 +164,7 @@ class BookingController extends Controller
 
         return response()->json([
             'service_name' => $layanan->nama,
+            'service_type' => $layanan->tipe_layanan,
             'base_price' => $hargaLayanan,
             'discount' => $diskon,
             'total_after_discount' => $totalSetelahDiskon,
@@ -279,7 +282,6 @@ class BookingController extends Controller
 
         $booking->status = 'Dibatalkan';
         $booking->save();
-        $booking->delete();
 
         return back()->with('success', 'Reservasi berhasil dibatalkan.');
     }

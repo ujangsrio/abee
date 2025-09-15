@@ -24,6 +24,7 @@ class CustomerBooking extends Model
 
     protected $casts = [
         'variasi' => 'array',
+        'tipe_layanan' => 'array',
     ];
 
 

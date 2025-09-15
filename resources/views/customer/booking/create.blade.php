@@ -25,6 +25,7 @@
 
             <input type="hidden" name="service_id" id="service_id">
             <input type="hidden" name="tanggal" id="tanggal_hidden">
+            <input type="hidden" name="tipe_layanan" id="tipe_layanan"> {{-- otomatis dari admin --}}
 
             {{-- Nama Customer --}}
             <div>
@@ -69,24 +70,11 @@
                 @error('time') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
 
-            {{-- Tipe Layanan --}}
+            {{-- Tipe Layanan (otomatis) --}}
             <div id="serviceTypeOption" style="display: none;">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Layanan</label>
-                <div class="space-y-3">
-                    <label class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
-                        <input type="radio" name="tipe_layanan" value="studio" class="mr-3" checked>
-                        <div>
-                            <span class="text-sm font-medium">Datang ke Studio</span>
-                            <p class="text-xs text-gray-600">Anda datang ke lokasi Aretha Beauty</p>
-                        </div>
-                    </label>
-                    <label class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
-                        <input type="radio" name="tipe_layanan" value="home_service" class="mr-3">
-                        <div>
-                            <span class="text-sm font-medium">Home Service</span>
-                            <p class="text-xs text-gray-600">Kami datang ke lokasi Anda</p>
-                        </div>
-                    </label>
+                <div class="p-2 bg-gray-100 rounded text-gray-800 text-sm" id="serviceTypeText">
+                    -
                 </div>
             </div>
 
@@ -147,7 +135,7 @@
             </div>
 
             {{-- Informasi Pembayaran --}}
-            <div id="paymentInfo" class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-3 rounded-md text-sm">
+            <div id="paymentInfo" class="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-3 rounded-md text-sm" style="display: none;">
                 <div id="dpInfo">
                     <p><strong>Pembayaran DP:</strong> Bayar DP sebesar <strong>Rp50.000</strong> untuk konfirmasi booking.</p>
                     <p>Transfer ke rekening: <strong>1234567890 (BCA) a.n. Aretha Beauty</strong></p>
@@ -182,7 +170,6 @@
 {{-- AJAX --}}
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-    // Fungsi untuk format rupiah
     function formatRupiah(number) {
         return new Intl.NumberFormat('id-ID', {
             style: 'currency',
@@ -190,6 +177,8 @@
             minimumFractionDigits: 0
         }).format(number);
     }
+
+    let availableTimes = [];
 
     $(document).ready(function () {
         $('#layananSelect').on('change', function () {
@@ -206,27 +195,20 @@
                     service_id: serviceId,
                     tanggal: tanggal
                 }, function (data) {
-                    const timeSelect = $('#timeSelect');
-                    timeSelect.empty().append('<option value="">-- Pilih waktu --</option>');
-                    data.forEach(item => {
-                        const waktu = item.jam.substring(0, 5);
-                        timeSelect.append(`<option value="${waktu}">${waktu}</option>`);
-                    });
+                    availableTimes = data.map(item => item.jam.substring(0, 5)); // simpan semua jam
+                    renderTimeOptions();
                 });
 
-                // Hitung biaya total
+                // Hitung biaya total + tipe layanan
                 $.get('{{ route("customer.booking.calculateCost") }}', {
                     service_id: serviceId
                 }, function (data) {
-                    // Simpan data untuk perhitungan ulang
                     window.costData = data;
-                    
-                    // Tampilkan rincian biaya
+
                     $('#serviceName').text(data.service_name);
                     $('#basePrice').text(formatRupiah(data.base_price));
                     $('#totalAfterDiscount').text(formatRupiah(data.total_after_discount));
-                    
-                    // Tampilkan diskon jika ada
+
                     if (data.discount > 0) {
                         $('#discountRow').show();
                         $('#promoName').text(data.promo_name || 'Promo');
@@ -235,36 +217,56 @@
                         $('#discountRow').hide();
                     }
 
-                    // Update biaya berdasarkan opsi pembayaran
+                    // 🔹 Parse tipe layanan dari admin
+                    let tipeLayananArr = data.service_type; // sekarang array
+                    let tipeLayanan = tipeLayananArr[0] ?? 'studio'; // default pertama
+                    $('#tipe_layanan').val(tipeLayanan);
+                    
                     updatePaymentDisplay();
 
-                    // Tampilkan tipe layanan dan opsi pembayaran
                     $('#serviceTypeOption').show();
                     $('#paymentOption').show();
-                    
-                    // Tampilkan opsi pembayaran dan rincian biaya
-                    $('#paymentOption').show();
-
-                    // Tampilkan rincian biaya
                     $('#costBreakdown').show();
+                    $('#paymentInfo').show();
                 }).fail(function() {
                     alert('Gagal memuat informasi biaya. Silakan coba lagi.');
                 });
+
             } else {
-                // Sembunyikan rincian biaya jika tidak ada layanan dipilih
                 $('#costBreakdown').hide();
                 $('#serviceTypeOption').hide();
                 $('#paymentOption').hide();
+                $('#paymentInfo').hide();
                 $('#timeSelect').empty().append('<option value="">-- Pilih waktu --</option>');
             }
         });
 
-        // Handler untuk perubahan opsi pembayaran
+        // Jika user pilih jam, hapus dari daftar
+        $('#timeSelect').on('change', function () {
+            const chosen = $(this).val();
+            if (chosen) {
+                availableTimes = availableTimes.filter(time => time !== chosen);
+                renderTimeOptions(chosen); // render ulang, tapi biarkan pilihan tetap tersimpan
+            }
+        });
+
+        function renderTimeOptions(selected = '') {
+            const timeSelect = $('#timeSelect');
+            timeSelect.empty().append('<option value="">-- Pilih waktu --</option>');
+
+            if (selected) {
+                timeSelect.append(`<option value="${selected}" selected>${selected}</option>`);
+            }
+
+            availableTimes.forEach(time => {
+                timeSelect.append(`<option value="${time}">${time}</option>`);
+            });
+        }
+
         $('input[name="tipe_pembayaran"]').on('change', function() {
             updatePaymentDisplay();
         });
 
-        // Fungsi untuk update tampilan pembayaran
         function updatePaymentDisplay() {
             if (!window.costData) return;
             
@@ -272,30 +274,23 @@
             const data = window.costData;
             
             if (paymentType === 'full') {
-                // Pembayaran langsung lunas
                 $('#dpRow').hide();
                 $('#remainingRow').hide();
                 $('#totalPaymentRow').show();
                 $('#totalPaymentNow').text(formatRupiah(data.total_after_discount));
-                
-                // Ubah info pembayaran
                 $('#dpInfo').hide();
                 $('#fullInfo').show();
             } else {
-                // Pembayaran DP
                 $('#dpRow').show();
                 $('#remainingRow').show();
                 $('#totalPaymentRow').hide();
                 $('#dpAmount').text(formatRupiah(data.dp));
                 $('#remainingPayment').text(formatRupiah(data.remaining_payment));
-                
-                // Ubah info pembayaran
                 $('#fullInfo').hide();
                 $('#dpInfo').show();
             }
         }
         
-        // Panggil sekali untuk setup awal
         window.updatePaymentDisplay = updatePaymentDisplay;
     });
 </script>

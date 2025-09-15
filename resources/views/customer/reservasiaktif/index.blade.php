@@ -47,10 +47,12 @@
 
           <div class="font-medium">Tipe Layanan:</div>
           <div>
-            <span class="inline-block text-xs px-2 py-1 rounded {{ $booking->tipe_layanan === 'home_service' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white' }}">
-              {{ $booking->tipe_layanan === 'home_service' ? ' Home Service' : ' Datang ke Studio' }}
+            <span class="inline-block text-xs px-2 py-1 rounded 
+              {{ $booking->tipe_layanan === 'home_service' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white' }}">
+              {{ $booking->tipe_layanan ? ucwords(str_replace('_', ' ', implode(', ', (array)$booking->tipe_layanan))) : 'Tidak Diketahui' }}
             </span>
           </div>
+
 
           <div class="font-medium">Status Reservasi:</div>
           <div>

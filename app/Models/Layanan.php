@@ -17,6 +17,10 @@ class Layanan extends Model
         'gambar',
         'promo_id',
         'jam',
+        'tipe_layanan', 
+    ];
+
+    protected $casts = [
         'tipe_layanan' => 'array',
     ];
 
@@ -29,7 +33,4 @@ class Layanan extends Model
     {
         return $this->hasMany(\App\Models\Slot::class);
     }
-
-
 }
-

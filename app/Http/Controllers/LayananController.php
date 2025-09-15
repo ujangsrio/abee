@@ -29,15 +29,15 @@ class LayananController extends Controller
             'deskripsi' => 'required|string|max:255',
             'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'promo_id' => 'nullable|exists:promos,id',
-            'service_types' => 'required|array|min:1',
-            'service_types.*' => 'required|in:studio,home_service',
+            'tipe_layanan' => 'required|array|min:1',
+            'tipe_layanan.*' => 'required|in:studio,home_service',
             'slots' => 'required|array|min:1',
             'slots.*' => 'required|date_format:H:i',
         ]);
 
         $gambar = null;
         if ($request->hasFile('gambar')) {
-            $gambar = $request->file('gambar')->store( 'photos', 'public');
+            $gambar = $request->file('gambar')->store('photos', 'public');
         }
 
         $layanan = Layanan::create([
@@ -47,13 +47,13 @@ class LayananController extends Controller
             'deskripsi' => $request->deskripsi,
             'gambar' => $gambar ? basename($gambar) : null,
             'promo_id' => $request->promo_id,
-            'service_types' => $request->service_types, 
+            'tipe_layanan' => $request->tipe_layanan,
         ]);
 
         foreach ($request->slots as $jam) {
             $layanan->slots()->create([
                 'jam' => $jam,
-                'tanggal' => $layanan->tanggal, // fix: wajib ada
+                'tanggal' => $layanan->tanggal,
             ]);
         }
 
@@ -70,7 +70,7 @@ class LayananController extends Controller
     public function update(Request $request, Layanan $layanan)
     {
         $request->merge([
-            'slots' => array_map(fn($jam) => substr($jam, 0, 5), $request->slots),
+            'slots' => array_map(fn($jam) => substr($jam, 0, 5), $request->slots ?? []),
         ]);
 
         $request->validate([
@@ -80,8 +80,8 @@ class LayananController extends Controller
             'deskripsi' => 'required|string|max:255',
             'gambar' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'promo_id' => 'nullable|exists:promos,id',
-            'service_types' => 'required|array|min:1',
-            'service_types.*' => 'required|in:studio,home_service',
+            'tipe_layanan' => 'required|array|min:1',
+            'tipe_layanan.*' => 'required|in:studio,home_service',
             'slots' => 'required|array|min:1',
             'slots.*' => ['required', 'date_format:H:i'],
             'slot_ids' => 'nullable|array',
@@ -96,7 +96,7 @@ class LayananController extends Controller
             'tipe_layanan' => $request->tipe_layanan,
         ]);
 
-        // Gambar baru (opsional)
+        // Update Gambar
         if ($request->hasFile('gambar')) {
             $gambarBaru = $request->file('gambar')->store('photos', 'public');
             if ($layanan->gambar && file_exists(storage_path('app/public/photos/' . $layanan->gambar))) {
@@ -110,22 +110,20 @@ class LayananController extends Controller
         $slotIdsFromForm = $request->slot_ids ?? [];
         $newSlots = $request->slots;
 
-        // Hapus slot yang tidak ada dalam form
+        // Hapus slot yang tidak ada di form
         $layanan->slots()->whereNotIn('id', $slotIdsFromForm)->delete();
 
         foreach ($newSlots as $index => $jam) {
             $id = $slotIdsFromForm[$index] ?? null;
             if ($id) {
-                // Update existing slot
                 $slot = $layanan->slots()->where('id', $id)->first();
                 if ($slot) {
                     $slot->update(['jam' => $jam, 'tanggal' => $layanan->tanggal]);
                 }
             } else {
-                // Tambah slot baru
                 $layanan->slots()->create([
                     'jam' => $jam,
-                    'tanggal' => $layanan->tanggal, // wajib
+                    'tanggal' => $layanan->tanggal,
                 ]);
             }
         }
@@ -139,9 +137,7 @@ class LayananController extends Controller
             unlink(storage_path('app/public/photos/' . $layanan->gambar));
         }
 
-        // Hapus semua slot juga
         $layanan->slots()->delete();
-
         $layanan->delete();
 
         return redirect()->route('admin.layanan.index')->with('success', 'Layanan berhasil dihapus.');
