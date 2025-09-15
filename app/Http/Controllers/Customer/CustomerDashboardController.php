@@ -47,35 +47,40 @@ class CustomerDashboardController extends Controller
     }
 
 
-    public function akun() {
+    public function akun()
+    {
         return view('customer.akun.index');
     }
 
-    public function reservasiaktif() {
+    public function reservasiaktif()
+    {
         return view('customer.reservasiaktif.index');
     }
 
-    public function layanan() {
-        $layanan = Layanan::all(); 
+    public function layanan()
+    {
+        $layanan = Layanan::all();
         return view('customer.layanan.index', compact('layanan'));
     }
 
-    public function kontak() {
+    public function kontak()
+    {
         return view('customer.kontak.index');
     }
 
-    public function cari() {
+    public function cari()
+    {
         return view('customer.cari.index');
     }
 
-    public function profil() {
+    public function profil()
+    {
         return view('customer.profil.index');
     }
 
-    public function logout() {
+    public function logout()
+    {
         auth()->logout(); // Logout Laravel
         return redirect('/login');
     }
-
-    
 }

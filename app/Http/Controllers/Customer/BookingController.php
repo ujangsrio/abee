@@ -77,7 +77,7 @@ class BookingController extends Controller
             'service_id' => $request->service_id,
             'date' => $date,
             'time' => $request->time,
-            'tipe_layanan' => $tipeLayanan, // ✅ auto dari admin
+            'tipe_layanan' => $tipeLayanan, 
             'status' => 'Menunggu',
             'bukti_transfer' => $buktiPath,
             'tipe_pembayaran' => $request->tipe_pembayaran,
@@ -126,7 +126,7 @@ class BookingController extends Controller
         return response()->json($availableSlots);
     }
 
-    // API: Hitung total biaya berdasarkan layanan
+    // Hitung total biaya berdasarkan layanan
     public function calculateTotalCost(Request $request)
     {
         $serviceId = $request->service_id;
@@ -161,10 +161,11 @@ class BookingController extends Controller
 
         $dp = 50000; // DP tetap Rp50.000
         $sisaPembayaran = max(0, $totalSetelahDiskon - $dp);
+        $tipeLayanan = is_array($layanan->tipe_layanan) ? $layanan->tipe_layanan : [$layanan->tipe_layanan];
 
         return response()->json([
             'service_name' => $layanan->nama,
-            'service_type' => $layanan->tipe_layanan,
+            'service_type' => $tipeLayanan,
             'base_price' => $hargaLayanan,
             'discount' => $diskon,
             'total_after_discount' => $totalSetelahDiskon,

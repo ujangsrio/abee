@@ -73,8 +73,14 @@
             {{-- Tipe Layanan (otomatis) --}}
             <div id="serviceTypeOption" style="display: none;">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Tipe Layanan</label>
-                <div class="p-2 bg-gray-100 rounded text-gray-800 text-sm" id="serviceTypeText">
-                    -
+                <div class="relative">
+                    <div id="serviceTypeCard" class="p-4 rounded-lg border-2 text-sm font-medium flex items-center gap-3 transition-all duration-200">
+                        <div id="serviceTypeIcon" class="text-2xl"></div>
+                        <div>
+                            <div id="serviceTypeText" class="font-semibold text-lg">-</div>
+                            <div id="serviceTypeDesc" class="text-xs opacity-75 mt-1">Pilih layanan untuk melihat tipe</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -147,10 +153,13 @@
             </div>
 
             {{-- Bukti Pembayaran --}}
-            <div>
-                <label for="bukti_transfer" class="block text-sm font-medium text-gray-700 mb-1">Upload Bukti Pembayaran</label>
-                <input type="file" id="bukti_transfer" name="bukti_transfer" accept="image/*"
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm" required>
+            <div id="buktiTransferSection" style="display: none;">
+                <label for="bukti_transfer" class="block text-sm font-medium text-gray-700 mb-1">
+                    Upload Bukti Pembayaran <span class="text-red-500">*</span>
+                </label>
+                <input type="file" id="bukti_transfer" name="bukti_transfer" accept="image/jpeg,image/png,image/jpg"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm">
+                <p class="text-xs text-gray-500 mt-1">Format: JPG, JPEG, PNG. Maksimal 2MB.</p>
                 @error('bukti_transfer') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
 
@@ -159,8 +168,9 @@
                 <a href="{{ route('customer.layanan') }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm shadow transition">
                     ← Kembali
                 </a>
-                <button type="submit" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-md text-sm font-semibold transition">
-                    Booking Sekarang
+                <button type="submit" id="submitBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-md text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <span id="submitText">Booking Sekarang</span>
+                    <span id="loadingText" style="display: none;">Memproses...</span>
                 </button>
             </div>
         </form>
@@ -197,6 +207,12 @@
                 }, function (data) {
                     availableTimes = data.map(item => item.jam.substring(0, 5)); // simpan semua jam
                     renderTimeOptions();
+                    
+                    if (availableTimes.length === 0) {
+                        $('#timeSelect').append('<option value="" disabled>Tidak ada jam tersedia</option>');
+                    }
+                }).fail(function() {
+                    alert('Gagal memuat jam tersedia. Silakan coba lagi.');
                 });
 
                 // Hitung biaya total + tipe layanan
@@ -217,10 +233,14 @@
                         $('#discountRow').hide();
                     }
 
-                    // 🔹 Parse tipe layanan dari admin
-                    let tipeLayananArr = data.service_type; // sekarang array
-                    let tipeLayanan = tipeLayananArr[0] ?? 'studio'; // default pertama
+                    // Parse tipe layanan dari admin
+                    let tipeLayanan = Array.isArray(data.service_type) && data.service_type.length > 0 
+                        ? data.service_type[0] 
+                        : (data.service_type || 'studio');
                     $('#tipe_layanan').val(tipeLayanan);
+                    
+                    // Update tampilan tipe layanan
+                    updateServiceTypeDisplay(tipeLayanan);
                     
                     updatePaymentDisplay();
 
@@ -228,6 +248,7 @@
                     $('#paymentOption').show();
                     $('#costBreakdown').show();
                     $('#paymentInfo').show();
+                    $('#buktiTransferSection').show();
                 }).fail(function() {
                     alert('Gagal memuat informasi biaya. Silakan coba lagi.');
                 });
@@ -237,6 +258,7 @@
                 $('#serviceTypeOption').hide();
                 $('#paymentOption').hide();
                 $('#paymentInfo').hide();
+                $('#buktiTransferSection').hide();
                 $('#timeSelect').empty().append('<option value="">-- Pilih waktu --</option>');
             }
         });
@@ -291,7 +313,84 @@
             }
         }
         
+        // Form validation
+        function validateForm() {
+            const serviceId = $('#service_id').val();
+            const time = $('#timeSelect').val();
+            const buktiTransfer = $('#bukti_transfer')[0].files.length > 0;
+            
+            const isValid = serviceId && time && buktiTransfer;
+            $('#submitBtn').prop('disabled', !isValid);
+        }
+
+        // Check validation on form changes
+        $('#layananSelect, #timeSelect, #bukti_transfer').on('change', validateForm);
+        
+        // Form submit handling
+        $('form').on('submit', function() {
+            $('#submitBtn').prop('disabled', true);
+            $('#submitText').hide();
+            $('#loadingText').show();
+        });
+        
+        // Update tampilan tipe layanan dengan styling
+        function updateServiceTypeDisplay(tipeLayanan) {
+            const serviceTypeConfig = {
+                'studio': {
+                    icon: '',
+                    name: 'Studio',
+                    desc: 'Datang ke Salon',
+                    bgColor: 'bg-blue-50',
+                    borderColor: 'border-blue-200',
+                    textColor: 'text-blue-800'
+                },
+                'home_visit': {
+                    icon: '',
+                    name: 'Home Service',
+                    desc: 'Kami Datang ke Lokasi Anda',
+                    bgColor: 'bg-green-50',
+                    borderColor: 'border-green-200',
+                    textColor: 'text-green-800'
+                },
+                'party': {
+                    icon: '',
+                    name: 'Party',
+                    desc: 'Layanan untuk acara khusus',
+                    bgColor: 'bg-purple-50',
+                    borderColor: 'border-purple-200',
+                    textColor: 'text-purple-800'
+                },
+                'wedding': {
+                    icon: '',
+                    name: 'Wedding',
+                    desc: 'Layanan pernikahan',
+                    bgColor: 'bg-pink-50',
+                    borderColor: 'border-pink-200',
+                    textColor: 'text-pink-800'
+                }
+            };
+
+            const config = serviceTypeConfig[tipeLayanan] || {
+                icon: '',
+                // name: tipeLayanan.charAt(0).toUpperCase() + tipeLayanan.slice(1),
+                name: 'Home Service',
+                desc: 'Kami datang ke lokasi Anda',
+                bgColor: 'bg-gray-50',
+                borderColor: 'border-gray-200',
+                textColor: 'text-gray-800'
+            };
+
+            const card = $('#serviceTypeCard');
+            card.removeClass().addClass(`p-4 rounded-lg border-2 text-sm font-medium flex items-center gap-3 transition-all duration-200 ${config.bgColor} ${config.borderColor} ${config.textColor}`);
+            
+            $('#serviceTypeIcon').text(config.icon);
+            $('#serviceTypeText').text(config.name);
+            $('#serviceTypeDesc').text(config.desc);
+        }
+
         window.updatePaymentDisplay = updatePaymentDisplay;
+        window.validateForm = validateForm;
+        window.updateServiceTypeDisplay = updateServiceTypeDisplay;
     });
 </script>
 @endsection

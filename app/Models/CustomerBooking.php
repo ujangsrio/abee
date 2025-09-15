@@ -20,6 +20,7 @@ class CustomerBooking extends Model
         'status',
         'status_dp',
         'tipe_pembayaran',
+        'tipe_layanan',
     ];
 
     protected $casts = [
