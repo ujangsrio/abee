@@ -74,19 +74,17 @@ class ReservasiController extends Controller
             return redirect()->route('admin.reservasi.index')->with('error', 'Reservasi sudah dibatalkan, tidak bisa dikonfirmasi lagi.');
         }
 
-        // Update status DP & status reservasi
-        $booking->status_dp = 'Lunas';
-        $booking->status = 'Dikonfirmasi';
+        // Update status DP → otomatis status reservasi ikut dikonfirmasi via model
+        $booking->status_dp = 'DP Lunas';
         $booking->save();
 
-        return redirect()->route('admin.reservasi.index')->with('success', 'Pembayaran DP telah dikonfirmasi dan reservasi otomatis dikonfirmasi.');
+        return redirect()->route('admin.reservasi.index')->with('success', 'Pembayaran DP telah dikonfirmasi.');
     }
 
     public function rejectDp($id)
     {
         $booking = CustomerBooking::findOrFail($id);
 
-        // Update status DP & status reservasi
         $booking->status_dp = 'Belum';
         $booking->status = 'Dibatalkan';
         $booking->save();

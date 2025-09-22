@@ -28,7 +28,6 @@ class CustomerBooking extends Model
         'tipe_layanan' => 'array',
     ];
 
-
     public function service()
     {
         return $this->belongsTo(Layanan::class, 'service_id');
@@ -39,11 +38,25 @@ class CustomerBooking extends Model
         return $this->belongsTo(Customer::class, 'customer_id');
     }
 
-    // public function layanan()
-    // {
-    //     return $this->belongsTo(Layanan::class)->withDefault([
-    //         'harga' => 0,
-    //         'nama' => 'Layanan Tidak Ditemukan'
-    //     ]);
-    // }
+    protected static function booted()
+    {
+        static::creating(function ($booking) {
+            // Default status awal
+            if (empty($booking->status)) {
+                $booking->status = 'Menunggu';
+            }
+
+            // Kalau langsung bayar full (status_dp = Lunas)
+            if ($booking->status_dp === 'Lunas') {
+                $booking->status = 'Dikonfirmasi';
+            }
+        });
+
+        static::updating(function ($booking) {
+            // Kalau status_dp jadi Lunas → otomatis status reservasi dikonfirmasi
+            if ($booking->status_dp === 'Lunas') {
+                $booking->status = 'Dikonfirmasi';
+            }
+        });
+    }
 }

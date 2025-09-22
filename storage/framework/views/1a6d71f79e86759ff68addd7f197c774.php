@@ -17,6 +17,7 @@
                         <th class="py-3 px-4 border">Nama</th>
                         <th class="py-3 px-4 border">Gambar</th>
                         <th class="py-3 px-4 border">Harga</th>
+                        <th class="py-3 px-4 border">Tipe Layanan</th>
                         <th class="py-3 px-4 border">Promo</th>
                         <th class="py-3 px-4 border">Slot Tersedia</th>
                         <th class="py-3 px-4 border">Aksi</th>
@@ -35,6 +36,25 @@
                                 <?php endif; ?>
                             </td>
                             <td class="py-3 px-4 border text-gray-800">Rp <?php echo e(number_format($layanan->harga, 0, ',', '.')); ?></td>
+
+                            
+                            <td class="py-3 px-4 border">
+                                <?php if($layanan->tipe_layanan): ?>
+                                    <?php
+                                        $serviceTypes = $layanan->tipe_layanan;
+                                    ?>
+                                    <div class="space-y-1">
+                                        <?php $__currentLoopData = $serviceTypes; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $type): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                            <span class="inline-block text-xs px-2 py-1 rounded <?php echo e($type === 'home_service' ? 'bg-blue-500 text-white' : 'bg-gray-500 text-white'); ?>">
+                                                <?php echo e($type === 'home_service' ? ' Home Service' : ' Studio'); ?>
+
+                                            </span>
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                    </div>
+                                <?php else: ?>
+                                    <span class="text-sm text-gray-500 italic">Tidak diset</span>
+                                <?php endif; ?>
+                            </td>
 
                             
                             <td class="py-3 px-4 border">
