@@ -22,7 +22,7 @@ class CustomerDashboardController extends Controller
 
         $reservasiAktif = CustomerBooking::with('service')
             ->where('customer_id', $customer->id ?? 0)
-            ->whereNotIn('status', ['selesai', 'dibatalkan'])
+            ->whereNotIn('status', ['Selesai', 'Dibatalkan'])
             ->orderBy('date', 'asc')
             ->get();
 

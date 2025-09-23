@@ -50,6 +50,22 @@
 
         
         <div>
+            <label class="block mb-1 font-medium text-gray-700">Tipe Layanan yang Tersedia</label>
+            <div class="space-y-2">
+                <label class="flex items-center">
+                    <input type="checkbox" name="tipe_layanan[]" value="studio" class="mr-2" checked>
+                    <span> Datang ke Studio</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" name="tipe_layanan[]" value="home_service" class="mr-2" checked>
+                    <span> Home Service</span>
+                </label>
+            </div>
+            <p class="text-xs text-gray-600 mt-1">Pilih minimal satu tipe layanan yang tersedia</p>
+        </div>
+
+        
+        <div>
             <label class="block mb-1 font-medium text-gray-700">Pilih Promo (Opsional)</label>
             <select name="promo_id" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-300">
                 <option value="">-- Tidak ada promo --</option>

@@ -53,8 +53,9 @@ class CustomerBooking extends Model
         });
 
         static::updating(function ($booking) {
-            // Kalau status_dp jadi Lunas → otomatis status reservasi dikonfirmasi
-            if ($booking->status_dp === 'Lunas') {
+            // Kalau DP sudah lunas → status default ke Dikonfirmasi
+            // Kecuali jika admin sudah set status jadi Selesai atau Dibatalkan
+            if ($booking->status_dp === 'Lunas' && !in_array($booking->status, ['Selesai', 'Dibatalkan'])) {
                 $booking->status = 'Dikonfirmasi';
             }
         });

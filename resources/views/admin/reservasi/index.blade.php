@@ -26,7 +26,6 @@
                         <th class="py-3 px-4 border">Bukti Transfer</th>
                         <th class="py-3 px-4 border">Status DP</th>
                         <th class="py-3 px-4 border">Status Reservasi</th>
-                        {{-- <th class="py-3 px-4 border">Status Pembayaran</th> --}}
                         <th class="py-3 px-4 border">Aksi</th>
                     </tr>
                 </thead>
@@ -64,13 +63,16 @@
                                         $servicePrice = $r->service->harga ?? 0;
                                         $dpAmount = 50000; // Fixed DP amount
                                         $remainingAmount = 0;
-                                        
+
                                         if ($r->tipe_pembayaran === 'dp') {
                                             $remainingAmount = max(0, $servicePrice - $dpAmount);
                                         }
-                                        
-                                        // Determine payment status
-                                        if ($r->tipe_pembayaran === 'full') {
+
+                                        // Logic status pembayaran
+                                        if ($r->status === 'Selesai') {
+                                            $paymentStatus = 'Lunas';
+                                            $paymentClass = 'bg-green-100 text-green-800';
+                                        } elseif ($r->tipe_pembayaran === 'full') {
                                             $paymentStatus = 'Lunas';
                                             $paymentClass = 'bg-green-100 text-green-800';
                                         } elseif ($r->status_dp === 'Lunas' && $remainingAmount > 0) {
@@ -84,17 +86,19 @@
                                             $paymentClass = 'bg-green-100 text-green-800';
                                         }
                                     @endphp
-                                    
+
                                     <span class="px-2 py-1 rounded text-xs font-medium {{ $paymentClass }}">
                                         {{ $paymentStatus }}
                                     </span>
-                                    
-                                    @if($remainingAmount > 0 && $r->status_dp === 'Lunas')
+
+                                    {{-- Sisa pembayaran hanya muncul kalau masih DP dan belum selesai --}}
+                                    @if($remainingAmount > 0 && $r->status_dp === 'Lunas' && $r->status !== 'Selesai')
                                         <div class="text-xs text-red-600 font-medium">
                                             Kurang: Rp {{ number_format($remainingAmount, 0, ',', '.') }}
                                         </div>
                                     @endif
-                                    
+
+                                    {{-- Tombol konfirmasi/tolak DP --}}
                                     @if($r->status_dp === 'Belum' && $r->bukti_transfer)
                                         <div class="flex space-x-1">
                                             <form action="{{ route('admin.reservasi.confirmDp', $r->id) }}" method="POST" class="inline">
@@ -139,7 +143,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center py-6 text-gray-500 italic">Tidak ada reservasi ditemukan.</td>
+                            <td colspan="10" class="text-center py-6 text-gray-500 italic">Tidak ada reservasi ditemukan.</td>
                         </tr>
                     @endforelse
                 </tbody>
