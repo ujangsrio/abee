@@ -40,8 +40,8 @@
                     <p class="text-2xl font-bold text-purple-800 mt-1">Rp {{ number_format($pendapatanHariIni, 0, ',', '.') }}</p>
                 </div>
                 <div class="bg-white border border-purple-100 rounded-2xl p-4 shadow">
-                    <p class="text-sm text-gray-500">Total Pelanggan</p>
-                    <p class="text-2xl font-bold text-purple-800 mt-1">{{ $totalPelanggan }}</p>
+                    <p class="text-sm text-gray-500">Total Pelanggan Hari Ini</p>
+                    <p class="text-2xl font-bold text-purple-800 mt-1">{{ $totalPelangganHariIni }}</p>
                 </div>
             </div>
         </div>
@@ -61,59 +61,30 @@
         {{-- Grid untuk Pie Charts --}}
         
 
-        {{-- Tabel Rekap Pemasukan --}}
-        <div class="bg-white border border-purple-100 rounded-2xl shadow p-6 mb-6">
-            <h3 class="text-lg font-semibold text-purple-800 mb-4">Tabel Reservasi</h3>
-            <div class="overflow-x-auto">
-                <table class="w-full border border-gray-200 rounded-lg text-sm">
-                    <thead>
-                        <tr class="bg-purple-50 text-gray-700">
-                            <th class="px-4 py-2 border">Tanggal</th>
-                            <th class="px-4 py-2 border">Pendapatan</th>
-                            <th class="px-4 py-2 border">Jumlah Reservasi</th>
-                            <th class="px-4 py-2 border">Persentase</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @if(count($labelPendapatan) > 0)
-                            @php
-                                $totalPendapatan = array_sum($dataPendapatan);
-                                $totalReservasi = array_sum($dataReservasi);
-                            @endphp
-                            @foreach($labelPendapatan as $index => $label)
-                                @php
-                                    $pendapatan = $dataPendapatan[$index] ?? 0;
-                                    $reservasi = $dataReservasi[$index] ?? 0;
-                                    $percentagePendapatan = $totalPendapatan > 0 ? round(($pendapatan / $totalPendapatan) * 100, 1) : 0;
-                                    $percentageReservasi = $totalReservasi > 0 ? round(($reservasi / $totalReservasi) * 100, 1) : 0;
-                                @endphp
-                                <tr class="hover:bg-gray-50">
-                                    <td class="px-4 py-2 border">{{ $label }}</td>
-                                    <td class="px-4 py-2 border">Rp {{ number_format($pendapatan, 0, ',', '.') }}</td>
-                                    <td class="px-4 py-2 border">{{ $reservasi }}</td>
-                                    <td class="px-4 py-2 border">
-                                        <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">
-                                            {{ $percentagePendapatan }}%
-                                        </span>
-                                    </td>
-                                </tr>
-                            @endforeach
-                            {{-- Total Row --}}
-                            <tr class="bg-purple-50 font-semibold">
-                                <td class="px-4 py-2 border">TOTAL</td>
-                                <td class="px-4 py-2 border">Rp {{ number_format($totalPendapatan, 0, ',', '.') }}</td>
-                                <td class="px-4 py-2 border">{{ $totalReservasi }}</td>
-                                <td class="px-4 py-2 border">100%</td>
-                            </tr>
-                        @else
-                            <tr>
-                                <td colspan="4" class="px-4 py-2 border text-center text-gray-500">
-                                    Tidak ada data untuk ditampilkan
-                                </td>
-                            </tr>
-                        @endif
-                    </tbody>
-                </table>
+        {{-- Grafik Batang --}}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {{-- Grafik Reservasi --}}
+            <div class="bg-white border border-purple-100 rounded-2xl shadow p-6">
+                <h3 class="text-lg font-semibold text-purple-800 mb-4">Grafik Reservasi</h3>
+                <div class="relative" style="height: 300px;">
+                    <canvas id="reservasiBarChart"></canvas>
+                </div>
+            </div>
+
+            {{-- Grafik Pendapatan --}}
+            <div class="bg-white border border-purple-100 rounded-2xl shadow p-6">
+                <h3 class="text-lg font-semibold text-purple-800 mb-4">Grafik Pendapatan</h3>
+                <div class="relative" style="height: 300px;">
+                    <canvas id="pendapatanBarChart"></canvas>
+                </div>
+            </div>
+
+            {{-- Grafik Pelanggan --}}
+            <div class="bg-white border border-purple-100 rounded-2xl shadow p-6">
+                <h3 class="text-lg font-semibold text-purple-800 mb-4">Grafik Pelanggan</h3>
+                <div class="relative" style="height: 300px;">
+                    <canvas id="pelangganBarChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -123,134 +94,166 @@
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    // Fungsi untuk inisialisasi pie charts
-    function initializePieCharts() {
-        console.log('Initializing pie charts...');
+    // Fungsi untuk inisialisasi bar charts
+    function initializeBarCharts() {
+        console.log('Initializing bar charts...');
         
         // Data dari controller
-        const labelPendapatan = @json($labelPendapatan ?? []);
+        const labels = @json($labelPendapatan ?? []);
         const dataPendapatan = @json($dataPendapatan ?? []);
         const dataReservasi = @json($dataReservasi ?? []);
+        const dataPelanggan = @json($dataPelanggan ?? []);
 
-        console.log('Pie chart data:', {
-            labels: labelPendapatan,
+        console.log('Bar chart data:', {
+            labels: labels,
             pendapatan: dataPendapatan,
-            reservasi: dataReservasi
+            reservasi: dataReservasi,
+            pelanggan: dataPelanggan
         });
 
-        // Warna untuk pie chart
-        const colorPalette = [
-            '#a855f7', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', 
-            '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16'
-        ];
+        // Konfigurasi umum untuk bar charts
+        const commonOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: '#f3f4f6'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        };
 
-        // Pie Chart Pendapatan
-        const pendapatanPieChart = document.getElementById('pendapatanPieChart');
-        if (pendapatanPieChart && dataPendapatan.length > 0) {
+        // Bar Chart Reservasi
+        const reservasiBarChart = document.getElementById('reservasiBarChart');
+        if (reservasiBarChart && dataReservasi.length > 0) {
             try {
-                new Chart(pendapatanPieChart, {
-                    type: 'pie',
+                new Chart(reservasiBarChart, {
+                    type: 'bar',
                     data: {
-                        labels: labelPendapatan,
+                        labels: labels,
                         datasets: [{
-                            data: dataPendapatan,
-                            backgroundColor: colorPalette,
-                            borderColor: '#fff',
-                            borderWidth: 2,
-                            hoverOffset: 15
+                            data: dataReservasi,
+                            backgroundColor: '#a855f7',
+                            borderColor: '#7c3aed',
+                            borderWidth: 1,
+                            borderRadius: 4
                         }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
+                        ...commonOptions,
                         plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    padding: 20,
-                                    usePointStyle: true,
-                                    pointStyle: 'circle'
-                                }
-                            },
+                            ...commonOptions.plugins,
                             tooltip: {
                                 callbacks: {
                                     label: function(context) {
-                                        const label = context.label || '';
-                                        const value = context.raw || 0;
-                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                        const percentage = ((value / total) * 100).toFixed(1);
-                                        return `${label}: Rp ${value.toLocaleString('id-ID')} (${percentage}%)`;
+                                        return `${context.raw} reservasi`;
                                     }
                                 }
                             }
                         }
                     }
                 });
-                console.log('Pendapatan pie chart created successfully');
+                console.log('Reservasi bar chart created successfully');
             } catch (error) {
-                console.error('Error creating pendapatan pie chart:', error);
+                console.error('Error creating reservasi bar chart:', error);
             }
         }
 
-        // Pie Chart Reservasi
-        const reservasiPieChart = document.getElementById('reservasiPieChart');
-        if (reservasiPieChart && dataReservasi.length > 0) {
+        // Bar Chart Pendapatan
+        const pendapatanBarChart = document.getElementById('pendapatanBarChart');
+        if (pendapatanBarChart && dataPendapatan.length > 0) {
             try {
-                new Chart(reservasiPieChart, {
-                    type: 'pie',
+                new Chart(pendapatanBarChart, {
+                    type: 'bar',
                     data: {
-                        labels: labelPendapatan,
+                        labels: labels,
                         datasets: [{
-                            data: dataReservasi,
-                            backgroundColor: colorPalette,
-                            borderColor: '#fff',
-                            borderWidth: 2,
-                            hoverOffset: 15
+                            data: dataPendapatan,
+                            backgroundColor: '#10b981',
+                            borderColor: '#059669',
+                            borderWidth: 1,
+                            borderRadius: 4
                         }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: true,
+                        ...commonOptions,
                         plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    padding: 20,
-                                    usePointStyle: true,
-                                    pointStyle: 'circle'
-                                }
-                            },
+                            ...commonOptions.plugins,
                             tooltip: {
                                 callbacks: {
                                     label: function(context) {
-                                        const label = context.label || '';
-                                        const value = context.raw || 0;
-                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                        const percentage = ((value / total) * 100).toFixed(1);
-                                        return `${label}: ${value} reservasi (${percentage}%)`;
+                                        return `Rp ${context.raw.toLocaleString('id-ID')}`;
                                     }
                                 }
                             }
                         }
                     }
                 });
-                console.log('Reservasi pie chart created successfully');
+                console.log('Pendapatan bar chart created successfully');
             } catch (error) {
-                console.error('Error creating reservasi pie chart:', error);
+                console.error('Error creating pendapatan bar chart:', error);
+            }
+        }
+
+        // Bar Chart Pelanggan
+        const pelangganBarChart = document.getElementById('pelangganBarChart');
+        if (pelangganBarChart && dataPelanggan.length > 0) {
+            try {
+                new Chart(pelangganBarChart, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: dataPelanggan,
+                            backgroundColor: '#3b82f6',
+                            borderColor: '#2563eb',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        ...commonOptions,
+                        plugins: {
+                            ...commonOptions.plugins,
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.raw} pelanggan`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('Pelanggan bar chart created successfully');
+            } catch (error) {
+                console.error('Error creating pelanggan bar chart:', error);
             }
         }
     }
 
     // Tunggu sampai DOM siap dan Chart.js terload
     if (typeof Chart !== 'undefined') {
-        document.addEventListener('DOMContentLoaded', initializePieCharts);
+        document.addEventListener('DOMContentLoaded', initializeBarCharts);
     } else {
         console.error('Chart.js not loaded');
         
         // Coba load ulang Chart.js jika gagal
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js';
-        script.onload = initializePieCharts;
+        script.onload = initializeBarCharts;
         document.head.appendChild(script);
     }
 </script>
