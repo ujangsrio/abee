@@ -14,19 +14,19 @@ class DashboardController extends Controller
     {
         // === Statistik Utama Hari Ini ===
         $jumlahReservasiHariIni = CustomerBooking::whereDate('date', today())
-            ->where('status', 'selesai')
+            ->where('status', 'Selesai')
             ->count();
 
         // Pendapatan hari ini - menggunakan join yang lebih efisien
         $pendapatanHariIni = DB::table('customer_bookings')
             ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
             ->whereDate('customer_bookings.date', today())
-            ->where('customer_bookings.status', 'selesai')
+            ->where('customer_bookings.status', 'Selesai')
             ->sum('layanans.harga');
 
         // Total pelanggan hari ini - pelanggan yang melakukan booking hari ini
         $totalPelangganHariIni = CustomerBooking::whereDate('date', today())
-            ->where('status', 'selesai')
+            ->where('status', 'Selesai')
             ->distinct('customer_id')
             ->count('customer_id');
 
@@ -35,37 +35,37 @@ class DashboardController extends Controller
         $endOfWeek = Carbon::now()->endOfWeek();
 
         $jumlahReservasiMingguan = CustomerBooking::whereBetween('date', [$startOfWeek, $endOfWeek])
-            ->where('status', 'selesai')
+            ->where('status', 'Selesai')
             ->count();
 
         $pendapatanMingguan = DB::table('customer_bookings')
             ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
             ->whereBetween('customer_bookings.date', [$startOfWeek, $endOfWeek])
-            ->where('customer_bookings.status', 'selesai')
+            ->where('customer_bookings.status', 'Selesai')
             ->sum('layanans.harga');
 
         // === Bulanan ===
         $jumlahReservasiBulanan = CustomerBooking::whereMonth('date', Carbon::now()->month)
             ->whereYear('date', Carbon::now()->year)
-            ->where('status', 'selesai')
+            ->where('status', 'Selesai')
             ->count();
 
         $pendapatanBulanan = DB::table('customer_bookings')
             ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
             ->whereMonth('customer_bookings.date', Carbon::now()->month)
             ->whereYear('customer_bookings.date', Carbon::now()->year)
-            ->where('customer_bookings.status', 'selesai')
+            ->where('customer_bookings.status', 'Selesai')
             ->sum('layanans.harga');
 
         // === Tahunan ===
         $jumlahReservasiTahunan = CustomerBooking::whereYear('date', Carbon::now()->year)
-            ->where('status', 'selesai')
+            ->where('status', 'Selesai')
             ->count();
 
         $pendapatanTahunan = DB::table('customer_bookings')
             ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
             ->whereYear('customer_bookings.date', Carbon::now()->year)
-            ->where('customer_bookings.status', 'selesai')
+            ->where('customer_bookings.status', 'Selesai')
             ->sum('layanans.harga');
 
         $periode = $request->get('periode', 'mingguan');
@@ -88,17 +88,17 @@ class DashboardController extends Controller
                 $pendapatanHarian = DB::table('customer_bookings')
                     ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
                     ->whereDate('customer_bookings.date', $formattedDay)
-                    ->where('customer_bookings.status', 'selesai')
+                    ->where('customer_bookings.status', 'Selesai')
                     ->sum('layanans.harga');
 
                 // Reservasi harian
                 $reservasi = CustomerBooking::whereDate('date', $formattedDay)
-                    ->where('status', 'selesai')
+                    ->where('status', 'Selesai')
                     ->count();
 
                 // Pelanggan harian
                 $pelanggan = CustomerBooking::whereDate('date', $formattedDay)
-                    ->where('status', 'selesai')
+                    ->where('status', 'Selesai')
                     ->distinct('customer_id')
                     ->count('customer_id');
 
@@ -118,19 +118,19 @@ class DashboardController extends Controller
                     ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
                     ->whereMonth('customer_bookings.date', $month->month)
                     ->whereYear('customer_bookings.date', $month->year)
-                    ->where('customer_bookings.status', 'selesai')
+                    ->where('customer_bookings.status', 'Selesai')
                     ->sum('layanans.harga');
 
                 // Reservasi bulanan
                 $reservasi = CustomerBooking::whereMonth('date', $month->month)
                     ->whereYear('date', $month->year)
-                    ->where('status', 'selesai')
+                    ->where('status', 'Selesai')
                     ->count();
 
                 // Pelanggan bulanan
                 $pelanggan = CustomerBooking::whereMonth('date', $month->month)
                     ->whereYear('date', $month->year)
-                    ->where('status', 'selesai')
+                    ->where('status', 'Selesai')
                     ->distinct('customer_id')
                     ->count('customer_id');
 
@@ -149,17 +149,17 @@ class DashboardController extends Controller
                 $pendapatanTahunan = DB::table('customer_bookings')
                     ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
                     ->whereYear('customer_bookings.date', $year->year)
-                    ->where('customer_bookings.status', 'selesai')
+                    ->where('customer_bookings.status', 'Selesai')
                     ->sum('layanans.harga');
 
                 // Reservasi tahunan
                 $reservasi = CustomerBooking::whereYear('date', $year->year)
-                    ->where('status', 'selesai')
+                    ->where('status', 'Selesai')
                     ->count();
 
                 // Pelanggan tahunan
                 $pelanggan = CustomerBooking::whereYear('date', $year->year)
-                    ->where('status', 'selesai')
+                    ->where('status', 'Selesai')
                     ->distinct('customer_id')
                     ->count('customer_id');
 
