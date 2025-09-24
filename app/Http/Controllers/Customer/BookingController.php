@@ -77,7 +77,7 @@ class BookingController extends Controller
             'service_id' => $request->service_id,
             'date' => $date,
             'time' => $request->time,
-            'tipe_layanan' => $tipeLayanan, 
+            'tipe_layanan' => $tipeLayanan,
             'status' => 'Menunggu',
             'bukti_transfer' => $buktiPath,
             'tipe_pembayaran' => $request->tipe_pembayaran,
@@ -164,8 +164,8 @@ class BookingController extends Controller
         $tipeLayanan = is_array($layanan->tipe_layanan) ? $layanan->tipe_layanan : [$layanan->tipe_layanan];
 
         return response()->json([
-            'service_name' => $layanan->nama,
-            'service_type' => $tipeLayanan,
+            'nama' => $layanan->nama,
+            'tipe_layanan' => $tipeLayanan,
             'base_price' => $hargaLayanan,
             'discount' => $diskon,
             'total_after_discount' => $totalSetelahDiskon,
