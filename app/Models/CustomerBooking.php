@@ -28,6 +28,12 @@ class CustomerBooking extends Model
         'tipe_layanan' => 'array',
     ];
 
+    // Default biar aman kalau kosong
+    protected $attributes = [
+        'variasi' => '[]',
+        'tipe_layanan' => '[]',
+    ];
+
     public function service()
     {
         return $this->belongsTo(Layanan::class, 'service_id');
@@ -41,20 +47,16 @@ class CustomerBooking extends Model
     protected static function booted()
     {
         static::creating(function ($booking) {
-            // Default status awal
             if (empty($booking->status)) {
                 $booking->status = 'Menunggu';
             }
 
-            // Kalau langsung bayar full (status_dp = Lunas)
             if ($booking->status_dp === 'Lunas') {
                 $booking->status = 'Dikonfirmasi';
             }
         });
 
         static::updating(function ($booking) {
-            // Kalau DP sudah lunas → status default ke Dikonfirmasi
-            // Kecuali jika admin sudah set status jadi Selesai atau Dibatalkan
             if ($booking->status_dp === 'Lunas' && !in_array($booking->status, ['Selesai', 'Dibatalkan'])) {
                 $booking->status = 'Dikonfirmasi';
             }

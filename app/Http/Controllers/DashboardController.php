@@ -17,14 +17,12 @@ class DashboardController extends Controller
             ->where('status', 'Selesai')
             ->count();
 
-        // Pendapatan hari ini - menggunakan join yang lebih efisien
         $pendapatanHariIni = DB::table('customer_bookings')
             ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
             ->whereDate('customer_bookings.date', today())
             ->where('customer_bookings.status', 'Selesai')
             ->sum('layanans.harga');
 
-        // Total pelanggan hari ini - pelanggan yang melakukan booking hari ini
         $totalPelangganHariIni = CustomerBooking::whereDate('date', today())
             ->where('status', 'Selesai')
             ->distinct('customer_id')
@@ -44,6 +42,11 @@ class DashboardController extends Controller
             ->where('customer_bookings.status', 'Selesai')
             ->sum('layanans.harga');
 
+        $jumlahPelangganMingguan = CustomerBooking::whereBetween('date', [$startOfWeek, $endOfWeek])
+            ->where('status', 'Selesai')
+            ->distinct('customer_id')
+            ->count('customer_id');
+
         // === Bulanan ===
         $jumlahReservasiBulanan = CustomerBooking::whereMonth('date', Carbon::now()->month)
             ->whereYear('date', Carbon::now()->year)
@@ -57,6 +60,12 @@ class DashboardController extends Controller
             ->where('customer_bookings.status', 'Selesai')
             ->sum('layanans.harga');
 
+        $jumlahPelangganBulanan = CustomerBooking::whereMonth('date', Carbon::now()->month)
+            ->whereYear('date', Carbon::now()->year)
+            ->where('status', 'Selesai')
+            ->distinct('customer_id')
+            ->count('customer_id');
+
         // === Tahunan ===
         $jumlahReservasiTahunan = CustomerBooking::whereYear('date', Carbon::now()->year)
             ->where('status', 'Selesai')
@@ -68,6 +77,11 @@ class DashboardController extends Controller
             ->where('customer_bookings.status', 'Selesai')
             ->sum('layanans.harga');
 
+        $jumlahPelangganTahunan = CustomerBooking::whereYear('date', Carbon::now()->year)
+            ->where('status', 'Selesai')
+            ->distinct('customer_id')
+            ->count('customer_id');
+
         $periode = $request->get('periode', 'mingguan');
 
         // === Data Grafik berdasarkan periode ===
@@ -77,26 +91,22 @@ class DashboardController extends Controller
         $dataPelanggan = collect();
 
         if ($periode == 'mingguan') {
-            // Data 7 hari terakhir
             for ($i = 6; $i >= 0; $i--) {
                 $day = Carbon::now()->subDays($i);
                 $formattedDay = $day->format('Y-m-d');
 
                 $tanggal->push($day->format('d M'));
 
-                // Pendapatan harian
                 $pendapatanHarian = DB::table('customer_bookings')
                     ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
                     ->whereDate('customer_bookings.date', $formattedDay)
                     ->where('customer_bookings.status', 'Selesai')
                     ->sum('layanans.harga');
 
-                // Reservasi harian
                 $reservasi = CustomerBooking::whereDate('date', $formattedDay)
                     ->where('status', 'Selesai')
                     ->count();
 
-                // Pelanggan harian
                 $pelanggan = CustomerBooking::whereDate('date', $formattedDay)
                     ->where('status', 'Selesai')
                     ->distinct('customer_id')
@@ -107,13 +117,11 @@ class DashboardController extends Controller
                 $dataPelanggan->push($pelanggan);
             }
         } elseif ($periode == 'bulanan') {
-            // Data 12 bulan terakhir
             for ($i = 11; $i >= 0; $i--) {
                 $month = Carbon::now()->subMonths($i);
 
                 $tanggal->push($month->format('M Y'));
 
-                // Pendapatan bulanan
                 $pendapatanBulanan = DB::table('customer_bookings')
                     ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
                     ->whereMonth('customer_bookings.date', $month->month)
@@ -121,13 +129,11 @@ class DashboardController extends Controller
                     ->where('customer_bookings.status', 'Selesai')
                     ->sum('layanans.harga');
 
-                // Reservasi bulanan
                 $reservasi = CustomerBooking::whereMonth('date', $month->month)
                     ->whereYear('date', $month->year)
                     ->where('status', 'Selesai')
                     ->count();
 
-                // Pelanggan bulanan
                 $pelanggan = CustomerBooking::whereMonth('date', $month->month)
                     ->whereYear('date', $month->year)
                     ->where('status', 'Selesai')
@@ -139,25 +145,21 @@ class DashboardController extends Controller
                 $dataPelanggan->push($pelanggan);
             }
         } else { // tahunan
-            // Data 5 tahun terakhir
             for ($i = 4; $i >= 0; $i--) {
                 $year = Carbon::now()->subYears($i);
 
                 $tanggal->push($year->format('Y'));
 
-                // Pendapatan tahunan
                 $pendapatanTahunan = DB::table('customer_bookings')
                     ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
                     ->whereYear('customer_bookings.date', $year->year)
                     ->where('customer_bookings.status', 'Selesai')
                     ->sum('layanans.harga');
 
-                // Reservasi tahunan
                 $reservasi = CustomerBooking::whereYear('date', $year->year)
                     ->where('status', 'Selesai')
                     ->count();
 
-                // Pelanggan tahunan
                 $pelanggan = CustomerBooking::whereYear('date', $year->year)
                     ->where('status', 'Selesai')
                     ->distinct('customer_id')
@@ -170,19 +172,24 @@ class DashboardController extends Controller
         }
 
         return view('admin.dashboard', [
-            // Statistik utama
-            'jumlahReservasiHariIni'  => $jumlahReservasiHariIni,
-            'pendapatanHariIni'       => $pendapatanHariIni,
-            'totalPelangganHariIni'   => $totalPelangganHariIni,
-            'jumlahReservasiMingguan' => $jumlahReservasiMingguan,
-            'pendapatanMingguan'      => $pendapatanMingguan,
-            'jumlahReservasiBulanan'  => $jumlahReservasiBulanan,
-            'pendapatanBulanan'       => $pendapatanBulanan,
-            'jumlahReservasiTahunan'  => $jumlahReservasiTahunan,
-            'pendapatanTahunan'       => $pendapatanTahunan,
-            'periode'                 => $periode,
+            'jumlahReservasiHariIni'   => $jumlahReservasiHariIni,
+            'pendapatanHariIni'        => $pendapatanHariIni,
+            'totalPelangganHariIni'    => $totalPelangganHariIni,
 
-            // Data grafik berdasarkan periode
+            'jumlahReservasiMingguan'  => $jumlahReservasiMingguan,
+            'pendapatanMingguan'       => $pendapatanMingguan,
+            'jumlahPelangganMingguan'  => $jumlahPelangganMingguan,
+
+            'jumlahReservasiBulanan'   => $jumlahReservasiBulanan,
+            'pendapatanBulanan'        => $pendapatanBulanan,
+            'jumlahPelangganBulanan'   => $jumlahPelangganBulanan,
+
+            'jumlahReservasiTahunan'   => $jumlahReservasiTahunan,
+            'pendapatanTahunan'        => $pendapatanTahunan,
+            'jumlahPelangganTahunan'   => $jumlahPelangganTahunan,
+
+            'periode'                  => $periode,
+
             'labelPendapatan' => $tanggal->toArray(),
             'labelReservasi'  => $tanggal->toArray(),
             'labelPelanggan'  => $tanggal->toArray(),
