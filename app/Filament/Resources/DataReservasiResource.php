@@ -5,7 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\DataReservasiResource\Pages;
 use App\Models\CustomerBooking;
 use App\Models\Customer;
-use App\Models\CustomerService;
+use App\Models\Layanan;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -13,6 +13,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Storage;
 
 class DataReservasiResource extends Resource
 {
@@ -69,7 +70,7 @@ class DataReservasiResource extends Resource
                     ->schema([
                         Forms\Components\Select::make('service_id')
                             ->label('Layanan')
-                            ->relationship('service', 'name')
+                            ->relationship('service', 'nama')
                             ->required()
                             ->searchable()
                             ->preload(),
@@ -119,7 +120,16 @@ class DataReservasiResource extends Resource
                             ->default('Belum')
                             ->required(),
                         Forms\Components\FileUpload::make('bukti_transfer')
-                            ->directory('bukti'),
+                            ->label('Bukti Transfer')
+                            ->directory('bukti')
+                            ->disk('public')
+                            ->image()
+                            ->maxSize(2048)
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg'])
+                            ->downloadable()
+                            ->openable()
+                            ->previewable(true)
+                            ->helperText('Format: JPG, JPEG, PNG. Maksimal 2MB.'),
                     ])->columns(2),
             ]);
     }
@@ -129,30 +139,29 @@ class DataReservasiResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('id')
-                    ->label('No')
-                    ->sortable(),
+                    ->label('ID')
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('customer_name')
-                    ->label('Nama')
+                    ->label('Nama Pelanggan')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('customer.whatsapp')
-                    ->label('Kontak')
+                    ->label('WhatsApp')
                     ->searchable()
                     ->default('-'),
-                Tables\Columns\TextColumn::make('service.name')
+                Tables\Columns\TextColumn::make('service.nama')
                     ->label('Layanan')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('tipe_layanan')
                     ->label('Tipe Layanan')
                     ->formatStateUsing(function ($state) {
-
                         if (is_array($state)) {
                             return implode(', ', array_map(function ($item) {
                                 return $item === 'home_service' ? 'Home Service' : 'Studio';
                             }, $state));
                         }
-
                         return $state ?? '-';
                     })
                     ->badge()
@@ -166,13 +175,32 @@ class DataReservasiResource extends Resource
                     ->sortable(),
                 Tables\Columns\ImageColumn::make('bukti_transfer')
                     ->label('Bukti Transfer')
-                    ->disk('public') // penting! agar membaca dari storage/app/public
-                    ->visibility('visible')
-                    ->size(80) // opsional, bisa ubah sesuai kebutuhan
-                    ->url(fn($record) => asset('storage/' . $record->bukti_transfer)) // agar bisa diklik
-                    ->openUrlInNewTab(), // buka gambar di tab baru
+                    ->disk('public')
+                    ->size(60)
+                    ->square()
+                    ->defaultImageUrl(url('/images/default-bukti.png')) // Fallback image
+                    ->extraImgAttributes([
+                        'class' => 'rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer',
+                        'alt' => 'Bukti Transfer',
+                        'onclick' => 'openImage(this.src)' // JavaScript untuk open image
+                    ])
+                    ->placeholder('Tidak ada bukti')
+                    ->grow(false),
+                Tables\Columns\TextColumn::make('tipe_pembayaran')
+                    ->label('Tipe Bayar')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'full' => 'success',
+                        'dp' => 'warning',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                        'full' => 'Lunas',
+                        'dp' => 'DP',
+                        default => $state,
+                    }),
                 Tables\Columns\TextColumn::make('status_dp')
-                    ->label('Status Pembayaran')
+                    ->label('Status DP')
                     ->badge()
                     ->color(fn(string $state): string => match ($state) {
                         'Lunas' => 'success',
@@ -189,6 +217,11 @@ class DataReservasiResource extends Resource
                         'Selesai' => 'info',
                         default => 'gray',
                     }),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Dibuat')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -205,24 +238,56 @@ class DataReservasiResource extends Resource
                         'Belum' => 'Belum',
                         'Lunas' => 'Lunas',
                     ]),
+                SelectFilter::make('tipe_pembayaran')
+                    ->label('Tipe Pembayaran')
+                    ->options([
+                        'dp' => 'DP',
+                        'full' => 'Lunas',
+                    ]),
                 SelectFilter::make('service_id')
                     ->label('Layanan')
-                    ->relationship('service', 'name'),
+                    ->relationship('service', 'nama'),
             ])
             ->actions([
+                Tables\Actions\Action::make('viewBukti')
+                    ->label('Lihat Bukti')
+                    ->icon('heroicon-o-eye')
+                    ->color('info')
+                    ->visible(fn(CustomerBooking $record) => !empty($record->bukti_transfer))
+                    ->action(function (CustomerBooking $record) {
+                        if ($record->bukti_transfer && Storage::disk('public')->exists($record->bukti_transfer)) {
+                            // Return URL untuk dibuka di tab baru
+                            $url = Storage::disk('public');
+                            return redirect($url);
+                        }
+
+                        Notification::make()
+                            ->title('Bukti Transfer Tidak Ditemukan')
+                            ->danger()
+                            ->send();
+                    })
+                    ->openUrlInNewTab(),
                 Tables\Actions\Action::make('confirmDp')
                     ->label('Konfirmasi DP')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
-                    ->visible(fn(CustomerBooking $record) => $record->status_dp === 'Belum' && $record->bukti_transfer)
+                    ->visible(
+                        fn(CustomerBooking $record) =>
+                        $record->status_dp === 'Belum' &&
+                            !empty($record->bukti_transfer) &&
+                            $record->status !== 'Dibatalkan'
+                    )
                     ->requiresConfirmation()
+                    ->modalHeading('Konfirmasi DP')
+                    ->modalDescription('Apakah Anda yakin ingin mengkonfirmasi DP ini? Status akan berubah menjadi Lunas dan reservasi akan dikonfirmasi.')
                     ->action(function (CustomerBooking $record) {
                         $record->update([
                             'status_dp' => 'Lunas',
                             'status' => 'Dikonfirmasi',
                         ]);
+
                         Notification::make()
-                            ->title('DP Dikonfirmasi')
+                            ->title('DP Berhasil Dikonfirmasi')
                             ->success()
                             ->send();
                     }),
@@ -230,13 +295,21 @@ class DataReservasiResource extends Resource
                     ->label('Tolak DP')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn(CustomerBooking $record) => $record->status_dp === 'Belum' && $record->bukti_transfer)
+                    ->visible(
+                        fn(CustomerBooking $record) =>
+                        $record->status_dp === 'Belum' &&
+                            !empty($record->bukti_transfer) &&
+                            $record->status !== 'Dibatalkan'
+                    )
                     ->requiresConfirmation()
+                    ->modalHeading('Tolak DP')
+                    ->modalDescription('Apakah Anda yakin ingin menolak DP ini? Reservasi akan dibatalkan.')
                     ->action(function (CustomerBooking $record) {
                         $record->update([
                             'status_dp' => 'Belum',
                             'status' => 'Dibatalkan',
                         ]);
+
                         Notification::make()
                             ->title('DP Ditolak')
                             ->warning()
@@ -248,7 +321,7 @@ class DataReservasiResource extends Resource
                     ->color('primary')
                     ->form([
                         Forms\Components\Select::make('status')
-                            ->label('Status')
+                            ->label('Status Reservasi')
                             ->options([
                                 'Menunggu' => 'Menunggu',
                                 'Dikonfirmasi' => 'Dikonfirmasi',
@@ -256,15 +329,22 @@ class DataReservasiResource extends Resource
                                 'Selesai' => 'Selesai',
                             ])
                             ->required(),
+                        Forms\Components\Select::make('status_dp')
+                            ->label('Status DP')
+                            ->options([
+                                'Belum' => 'Belum',
+                                'Lunas' => 'Lunas',
+                            ])
+                            ->required(),
                     ])
                     ->action(function (CustomerBooking $record, array $data) {
-                        $updates = ['status' => $data['status']];
-                        if ($data['status'] === 'Selesai') {
-                            $updates['status_dp'] = 'Lunas';
-                        }
-                        $record->update($updates);
+                        $record->update([
+                            'status' => $data['status'],
+                            'status_dp' => $data['status_dp'],
+                        ]);
+
                         Notification::make()
-                            ->title('Status Diperbarui')
+                            ->title('Status Berhasil Diperbarui')
                             ->success()
                             ->send();
                     }),
@@ -274,7 +354,10 @@ class DataReservasiResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('created_at', 'desc')
+            ->emptyStateHeading('Tidak ada reservasi')
+            ->emptyStateDescription('Belum ada data reservasi yang tercatat.')
+            ->emptyStateIcon('heroicon-o-calendar');
     }
 
     public static function getRelations(): array

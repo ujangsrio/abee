@@ -61,7 +61,7 @@
             @endphp
 
             <div class="layanan-card">
-                <img src="{{ asset('storage/photos/' . $item->gambar) }}" alt="{{ $item->nama }}">
+                <img src="{{ asset('/public/images/photos/' . $item->gambar) }}" alt="{{ $item->nama }}">
 
                 <div class="card-body space-y-2">
                     {{-- Nama Layanan --}}

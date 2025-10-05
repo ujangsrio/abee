@@ -59,7 +59,7 @@
             ?>
 
             <div class="layanan-card">
-                <img src="<?php echo e(asset('storage/photos/' . $item->gambar)); ?>" alt="<?php echo e($item->nama); ?>">
+                <img src="<?php echo e(asset('/public/images/photos/' . $item->gambar)); ?>" alt="<?php echo e($item->nama); ?>">
 
                 <div class="card-body space-y-2">
                     

@@ -195,9 +195,8 @@ class BookingController extends Controller
             return back()->withErrors(['msg' => 'Data pelanggan tidak ditemukan.']);
         }
 
-        // Pastikan eager loading dengan relasi service
         $bookings = CustomerBooking::with(['service' => function ($query) {
-            $query->select('id', 'nama', 'harga', 'promo_id'); // Select hanya field yang diperlukan
+            $query->select('id', 'nama', 'harga', 'promo_id');
         }])
             ->where('customer_id', $customerProfile->id)
             ->whereNotIn('status', ['Selesai', 'Dibatalkan'])
