@@ -26,6 +26,21 @@ class DataReservasiResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Manajemen Reservasi';
 
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
@@ -110,15 +125,6 @@ class DataReservasiResource extends Resource
                             ->imagePreviewHeight('250')
                             ->maxSize(2048),
                     ])->columns(2),
-
-                // Forms\Components\Section::make('Informasi Tambahan')
-                //     ->schema([
-                //         Forms\Components\KeyValue::make('variasi')
-                //             ->label('Variasi Layanan')
-                //             ->keyLabel('Nama Variasi')
-                //             ->valueLabel('Detail')
-                //             ->reorderable(),
-                //     ]),
             ]);
     }
 
@@ -141,22 +147,20 @@ class DataReservasiResource extends Resource
                     ->label('Layanan')
                     ->searchable()
                     ->sortable(),
-            Tables\Columns\TextColumn::make('tipe_layanan')
-                ->label('Tipe Layanan')
-                ->formatStateUsing(function ($state) {
-                    // Debug: lihat format data sebenarnya
-                    // \Log::info('Tipe Layanan Data:', ['state' => $state, 'type' => gettype($state)]);
+                Tables\Columns\TextColumn::make('tipe_layanan')
+                    ->label('Tipe Layanan')
+                    ->formatStateUsing(function ($state) {
 
-                    if (is_array($state)) {
-                        return implode(', ', array_map(function ($item) {
-                            return $item === 'home_service' ? 'Home Service' : 'Studio';
-                        }, $state));
-                    }
+                        if (is_array($state)) {
+                            return implode(', ', array_map(function ($item) {
+                                return $item === 'home_service' ? 'Home Service' : 'Studio';
+                            }, $state));
+                        }
 
-                    return $state ?? '-';
-                })
-                ->badge()
-                ->color('primary'),
+                        return $state ?? '-';
+                    })
+                    ->badge()
+                    ->color('primary'),
                 Tables\Columns\TextColumn::make('date')
                     ->label('Tanggal')
                     ->date('d/m/Y')
@@ -188,48 +192,43 @@ class DataReservasiResource extends Resource
                         'Selesai' => 'info',
                         default => 'gray',
                     }),
-                // Tables\Columns\TextColumn::make('created_at')
-                //     ->label('Dibuat')
-                //     ->dateTime('d/m/Y H:i')
-                //     ->sortable()
-                //     ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                SelectFilter::make('status')
-                    ->label('Status Reservasi')
-                    ->options([
-                        'Menunggu' => 'Menunggu',
-                        'Dikonfirmasi' => 'Dikonfirmasi',
-                        'Dibatalkan' => 'Dibatalkan',
-                        'Selesai' => 'Selesai',
-                    ]),
-                SelectFilter::make('status_dp')
-                    ->label('Status Pembayaran')
-                    ->options([
-                        'Belum' => 'Belum',
-                        'Lunas' => 'Lunas',
-                    ]),
-                SelectFilter::make('service_id')
-                    ->label('Layanan')
-                    ->relationship('service', 'name'),
-            ])
-            ->actions([
-                Tables\Actions\Action::make('confirmDp')
-                    ->label('Konfirmasi DP')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->visible(fn(CustomerBooking $record) => $record->status_dp === 'Belum' && $record->bukti_transfer)
-                    ->requiresConfirmation()
-                    ->action(function (CustomerBooking $record) {
-                        $record->update([
-                            'status_dp' => 'Lunas',
-                            'status' => 'Dikonfirmasi',
-                        ]);
-                        Notification::make()
-                            ->title('DP Dikonfirmasi')
-                            ->success()
-                            ->send();
-                    }),
+                    ])
+                    ->filters([
+                        SelectFilter::make('status')
+                            ->label('Status Reservasi')
+                            ->options([
+                                'Menunggu' => 'Menunggu',
+                                'Dikonfirmasi' => 'Dikonfirmasi',
+                                'Dibatalkan' => 'Dibatalkan',
+                                'Selesai' => 'Selesai',
+                            ]),
+                        SelectFilter::make('status_dp')
+                            ->label('Status Pembayaran')
+                            ->options([
+                                'Belum' => 'Belum',
+                                'Lunas' => 'Lunas',
+                            ]),
+                        SelectFilter::make('service_id')
+                            ->label('Layanan')
+                            ->relationship('service', 'name'),
+                    ])
+                            ->actions([
+                                Tables\Actions\Action::make('confirmDp')
+                                    ->label('Konfirmasi DP')
+                                    ->icon('heroicon-o-check-circle')
+                                    ->color('success')
+                                    ->visible(fn(CustomerBooking $record) => $record->status_dp === 'Belum' && $record->bukti_transfer)
+                                    ->requiresConfirmation()
+                                    ->action(function (CustomerBooking $record) {
+                                        $record->update([
+                                            'status_dp' => 'Lunas',
+                                            'status' => 'Dikonfirmasi',
+                                        ]);
+                                        Notification::make()
+                                            ->title('DP Dikonfirmasi')
+                                            ->success()
+                                            ->send();
+                                    }),
                 Tables\Actions\Action::make('rejectDp')
                     ->label('Tolak DP')
                     ->icon('heroicon-o-x-circle')
@@ -272,8 +271,6 @@ class DataReservasiResource extends Resource
                             ->success()
                             ->send();
                     }),
-                // Tables\Actions\EditAction::make(),
-                // Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

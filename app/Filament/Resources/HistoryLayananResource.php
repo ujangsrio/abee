@@ -25,6 +25,21 @@ class HistoryLayananResource extends Resource
 
     protected static ?int $navigationSort = 3;
 
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form

@@ -23,6 +23,21 @@ class DataPelangganResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Data Pelanggan';
 
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit($record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
+
     public static function form(Form $form): Form
     {
         return $form
