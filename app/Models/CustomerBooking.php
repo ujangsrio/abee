@@ -2,46 +2,39 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class CustomerBooking extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'customer_id',
         'customer_name',
         'service_id',
-        'nama',
         'date',
         'time',
         'tipe_layanan',
         'status',
         'status_dp',
         'tipe_pembayaran',
-        'variasi',
         'bukti_transfer',
+        'variasi'
     ];
 
     protected $casts = [
-        // 'date' => 'date',
         'tipe_layanan' => 'array',
         'variasi' => 'array',
+        'date' => 'date'
     ];
 
-    public function customer()
-    {
-        return $this->belongsTo(Customer::class);
-    }
-
+    // Relasi ke model Layanan
     public function service()
     {
-        return $this->belongsTo(CustomerService::class, 'service_id');
+        return $this->belongsTo(Layanan::class, 'service_id');
     }
 
-    public function layanan()
+    // Relasi ke model Customer
+    public function customer()
     {
-        return $this->belongsTo(CustomerLayanan::class, 'service_id');
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 }

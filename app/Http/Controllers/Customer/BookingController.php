@@ -26,8 +26,6 @@ class BookingController extends Controller
         return view('customer.booking.create', compact('tanggalJam'));
     }
 
-
-
     // Simpan booking
     public function store(Request $request)
     {
@@ -53,23 +51,28 @@ class BookingController extends Controller
 
         $date = $layanan->tanggal;
 
+        // Periksa apakah slot sudah dibooking
         $exists = CustomerBooking::where('date', $date)
             ->where('time', $request->time)
+            ->where('service_id', $request->service_id)
+            ->whereNotIn('status', ['Dibatalkan'])
             ->exists();
 
         if ($exists) {
             return back()->with('error', 'Jam tersebut sudah dibooking. Silakan pilih waktu lain.');
         }
 
-        // ⬇️ Ambil tipe layanan langsung dari model
-        $tipeLayanan = $layanan->tipe_layanan;
+        // Ambil tipe layanan dari model
+        $tipeLayanan = $layanan->tipe_layanan ?? ['studio', 'home_service'];
 
         $buktiPath = null;
         if ($request->hasFile('bukti_transfer')) {
             $buktiPath = $request->file('bukti_transfer')->store('bukti', 'public');
         }
 
+        // Tentukan status DP berdasarkan tipe pembayaran
         $dpStatus = ($request->tipe_pembayaran === 'full') ? 'Lunas' : 'Belum';
+        $status = 'Menunggu';
 
         CustomerBooking::create([
             'customer_id' => $customer->id,
@@ -78,7 +81,7 @@ class BookingController extends Controller
             'date' => $date,
             'time' => $request->time,
             'tipe_layanan' => $tipeLayanan,
-            'status' => 'Menunggu',
+            'status' => $status,
             'bukti_transfer' => $buktiPath,
             'tipe_pembayaran' => $request->tipe_pembayaran,
             'status_dp' => $dpStatus,
@@ -90,8 +93,6 @@ class BookingController extends Controller
 
         return redirect()->route('customer.reservasiaktif')->with('success', $message);
     }
-
-
 
     // API: Ambil jam tersedia
     public function availableTimes(Request $request)
@@ -110,9 +111,10 @@ class BookingController extends Controller
             ->where('tanggal', $tanggal)
             ->pluck('jam');
 
-        // Ambil jam yang sudah dibooking di tanggal tersebut
+        // Ambil jam yang sudah dibooking di tanggal tersebut (kecuali yang dibatalkan)
         $bookedTimes = CustomerBooking::where('service_id', $serviceId)
             ->where('date', $tanggal)
+            ->whereNotIn('status', ['Dibatalkan'])
             ->pluck('time')
             ->toArray();
 
@@ -161,11 +163,13 @@ class BookingController extends Controller
 
         $dp = 50000; // DP tetap Rp50.000
         $sisaPembayaran = max(0, $totalSetelahDiskon - $dp);
-        $tipeLayanan = is_array($layanan->tipe_layanan) ? $layanan->tipe_layanan : [$layanan->tipe_layanan];
+
+        // Ambil tipe layanan dari database
+        $tipeLayanan = $layanan->tipe_layanan ?? ['studio', 'home_service'];
 
         return response()->json([
-            'nama' => $layanan->nama,
-            'tipe_layanan' => $tipeLayanan,
+            'service_name' => $layanan->nama,
+            'service_type' => $tipeLayanan,
             'base_price' => $hargaLayanan,
             'discount' => $diskon,
             'total_after_discount' => $totalSetelahDiskon,
@@ -191,13 +195,19 @@ class BookingController extends Controller
             return back()->withErrors(['msg' => 'Data pelanggan tidak ditemukan.']);
         }
 
-        $bookings = CustomerBooking::with(['service'])
+        // Pastikan eager loading dengan relasi service
+        $bookings = CustomerBooking::with(['service' => function ($query) {
+            $query->select('id', 'nama', 'harga', 'promo_id'); // Select hanya field yang diperlukan
+        }])
             ->where('customer_id', $customerProfile->id)
             ->whereNotIn('status', ['Selesai', 'Dibatalkan'])
             ->orderBy('date', 'asc')
+            ->orderBy('time', 'asc')
             ->get();
 
         $isMember = $customerProfile->is_member ?? false;
+
+       
 
         // Hitung biaya untuk setiap booking
         $bookingsWithCost = $bookings->map(function ($booking) use ($isMember) {
@@ -221,32 +231,28 @@ class BookingController extends Controller
             $promoName = null;
 
             // Cek jika ada promo
-            if ($layanan->promo) {
-                $promo = $layanan->promo;
-                // Cek apakah promo berlaku (belum expired)
-                $isPromoValid = !$promo->tanggal_berakhir || now()->lte($promo->tanggal_berakhir);
-
-                if ($isPromoValid) {
-                    // Cek apakah promo hanya untuk member atau untuk semua
-                    if (!$promo->hanya_member || ($promo->hanya_member && $isMember)) {
-                        $diskon = ($promo->diskon / 100) * $hargaLayanan;
-                        $totalSetelahDiskon = $hargaLayanan - $diskon;
-                        $promoName = $promo->nama_promo;
+            if ($layanan->promo_id) {
+                $promo = \App\Models\Promo::find($layanan->promo_id);
+                if ($promo) {
+                    $isPromoValid = !$promo->tanggal_berakhir || now()->lte($promo->tanggal_berakhir);
+                    if ($isPromoValid) {
+                        if (!$promo->hanya_member || ($promo->hanya_member && $isMember)) {
+                            $diskon = ($promo->diskon / 100) * $hargaLayanan;
+                            $totalSetelahDiskon = $hargaLayanan - $diskon;
+                            $promoName = $promo->nama_promo;
+                        }
                     }
                 }
             }
 
-            $dp = 50000; // DP tetap Rp50.000
-
-            // Sisa pembayaran hanya dihitung jika DP sudah dikonfirmasi atau pembayaran full
-            $isDpConfirmed = in_array($booking->status_dp, ['Lunas', 'Dikonfirmasi']);
+            $dp = 50000;
+            $isDpConfirmed = $booking->status_dp === 'Lunas';
             $isFullPayment = $booking->tipe_pembayaran === 'full';
 
-            // Jika pembayaran full, sisa pembayaran = 0. Jika DP dan dikonfirmasi, hitung sisa
             if ($isFullPayment) {
                 $sisaPembayaran = 0;
             } else {
-                $sisaPembayaran = $isDpConfirmed ? max(0, $totalSetelahDiskon - $dp) : 0;
+                $sisaPembayaran = $isDpConfirmed ? max(0, $totalSetelahDiskon - $dp) : $totalSetelahDiskon - $dp;
             }
 
             $booking->cost_info = [
@@ -254,7 +260,7 @@ class BookingController extends Controller
                 'discount' => $diskon,
                 'total_after_discount' => $totalSetelahDiskon,
                 'dp' => $dp,
-                'remaining_payment' => $sisaPembayaran,
+                'remaining_payment' => max(0, $sisaPembayaran),
                 'promo_name' => $promoName,
                 'is_dp_confirmed' => $isDpConfirmed,
                 'is_full_payment' => $isFullPayment
@@ -273,7 +279,11 @@ class BookingController extends Controller
     {
         $booking = CustomerBooking::findOrFail($id);
 
-        if ($booking->customer_name !== Auth::guard('customer')->user()->name) {
+        // Pastikan booking milik user yang login
+        $user = Auth::guard('customer')->user();
+        $customer = Customer::where('user_id', $user->id)->first();
+
+        if (!$customer || $booking->customer_id !== $customer->id) {
             abort(403, 'Tidak diizinkan.');
         }
 
@@ -281,8 +291,10 @@ class BookingController extends Controller
             return back()->with('error', 'Reservasi hanya bisa dibatalkan jika masih menunggu konfirmasi.');
         }
 
-        $booking->status = 'Dibatalkan';
-        $booking->save();
+        $booking->update([
+            'status' => 'Dibatalkan',
+            'status_dp' => 'Belum'
+        ]);
 
         return back()->with('success', 'Reservasi berhasil dibatalkan.');
     }
@@ -298,8 +310,8 @@ class BookingController extends Controller
 
         $bookings = CustomerBooking::with('service')
             ->where('customer_id', $customer->id)
-            ->whereIn('status', ['Menunggu', 'Dikonfirmasi', 'Selesai', 'Dibatalkan'])
             ->orderBy('date', 'desc')
+            ->orderBy('time', 'desc')
             ->get();
 
         return view('customer.history.index', compact('bookings'));

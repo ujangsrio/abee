@@ -21,17 +21,20 @@
     @foreach ($bookings as $booking)
     <div class="bg-white border border-purple-200 rounded-md shadow-sm p-4 mb-4">
       <div class="flex justify-between items-center cursor-pointer" onclick="toggleDetail('detail{{ $booking->id }}')">
-        <h4 class="text-base font-semibold text-purple-700"> {{ $booking->service->nama ?? 'Layanan Tidak Ditemukan' }}</h4>
-        @if($booking->tipe_pembayaran === 'full')
-        <span class="text-sm font-medium px-2 py-1 rounded bg-green-600 text-white">
-          💰 Lunas
-        </span>
-        @else
-        <span class="text-sm font-medium px-2 py-1 rounded 
-              {{ in_array($booking->status_dp, ['Lunas', 'Dikonfirmasi']) ? 'bg-green-600 text-white' : 'bg-yellow-300 text-gray-800' }}">
-          {{ in_array($booking->status_dp, ['Lunas', 'Dikonfirmasi']) ? 'Lunas DP' : 'Belum DP' }}
-        </span>
-        @endif
+        <h4 class="text-base font-semibold text-purple-700">{{ $booking->service->nama ?? 'Layanan Tidak Ditemukan' }}</h4>
+        <div class="flex items-center gap-2">
+          @if($booking->tipe_pembayaran === 'full')
+          <span class="text-sm font-medium px-2 py-1 rounded bg-green-600 text-white">
+            💰 Lunas
+          </span>
+          @else
+          <span class="text-sm font-medium px-2 py-1 rounded 
+                {{ $booking->status_dp === 'Lunas' ? 'bg-green-600 text-white' : 'bg-yellow-300 text-gray-800' }}">
+            {{ $booking->status_dp === 'Lunas' ? 'Lunas DP' : 'Belum DP' }}
+          </span>
+          @endif
+          <span class="text-xs text-gray-500"></span>
+        </div>
       </div>
 
       <div id="detail{{ $booking->id }}" class="mt-3 hidden">
@@ -47,16 +50,25 @@
 
           <div class="font-medium">Tipe Layanan:</div>
           <div>
-            <span class="inline-block text-xs px-2 py-1 rounded 
-              {{ $booking->tipe_layanan === 'home_service' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white' }}">
-              {{ $booking->tipe_layanan ? ucwords(str_replace('_', ' ', implode(', ', (array)$booking->tipe_layanan))) : 'Tidak Diketahui' }}
-            </span>
+            @if(is_array($booking->tipe_layanan))
+              @foreach($booking->tipe_layanan as $tipe)
+                <span class="inline-block text-xs px-2 py-1 rounded 
+                  {{ $tipe === 'home_service' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white' }} mr-1 mb-1">
+                  {{ $tipe === 'home_service' ? 'Home Service' : 'Studio' }}
+                </span>
+              @endforeach
+            @else
+              <span class="text-gray-500 italic">Tidak tersedia</span>
+            @endif
           </div>
-
 
           <div class="font-medium">Status Reservasi:</div>
           <div>
-            <span class="inline-block text-xs px-2 py-1 rounded bg-purple-500 text-white font-semibold">
+            <span class="inline-block text-xs px-2 py-1 rounded 
+              {{ $booking->status === 'Menunggu' ? 'bg-yellow-500 text-white' : 
+                 ($booking->status === 'Dikonfirmasi' ? 'bg-green-500 text-white' : 
+                 ($booking->status === 'Selesai' ? 'bg-blue-500 text-white' : 
+                 'bg-red-500 text-white')) }} font-semibold">
               {{ ucfirst($booking->status) }}
             </span>
           </div>
@@ -122,9 +134,9 @@
           </div>
         </div>
 
-        {{-- Tombol --}}
+        {{-- Tombol Aksi --}}
         <div class="mt-3 flex gap-2 flex-wrap">
-          @if (strtolower($booking->status) === 'menunggu')
+          @if ($booking->status === 'Menunggu')
           <form action="{{ route('customer.booking.cancel', $booking->id) }}" method="POST" onsubmit="return confirm('Yakin ingin membatalkan reservasi ini?')">
             @csrf
             @method('DELETE')

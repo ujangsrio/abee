@@ -98,8 +98,7 @@ class LayananResource extends Resource
 
                 Tables\Columns\ImageColumn::make('gambar')
                     ->label('Gambar')
-                    ->square()
-                    ->size(60),
+                    ->square(),
 
                 Tables\Columns\TextColumn::make('harga')
                     ->label('Harga')

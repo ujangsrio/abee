@@ -19,18 +19,21 @@
     <?php $__currentLoopData = $bookings; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $booking): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
     <div class="bg-white border border-purple-200 rounded-md shadow-sm p-4 mb-4">
       <div class="flex justify-between items-center cursor-pointer" onclick="toggleDetail('detail<?php echo e($booking->id); ?>')">
-        <h4 class="text-base font-semibold text-purple-700"> <?php echo e($booking->service->nama ?? 'Layanan Tidak Ditemukan'); ?></h4>
-        <?php if($booking->tipe_pembayaran === 'full'): ?>
-        <span class="text-sm font-medium px-2 py-1 rounded bg-green-600 text-white">
-          💰 Lunas
-        </span>
-        <?php else: ?>
-        <span class="text-sm font-medium px-2 py-1 rounded 
-              <?php echo e(in_array($booking->status_dp, ['Lunas', 'Dikonfirmasi']) ? 'bg-green-600 text-white' : 'bg-yellow-300 text-gray-800'); ?>">
-          <?php echo e(in_array($booking->status_dp, ['Lunas', 'Dikonfirmasi']) ? 'Lunas DP' : 'Belum DP'); ?>
+        <h4 class="text-base font-semibold text-purple-700"><?php echo e($booking->service->nama ?? 'Layanan Tidak Ditemukan'); ?></h4>
+        <div class="flex items-center gap-2">
+          <?php if($booking->tipe_pembayaran === 'full'): ?>
+          <span class="text-sm font-medium px-2 py-1 rounded bg-green-600 text-white">
+            💰 Lunas
+          </span>
+          <?php else: ?>
+          <span class="text-sm font-medium px-2 py-1 rounded 
+                <?php echo e($booking->status_dp === 'Lunas' ? 'bg-green-600 text-white' : 'bg-yellow-300 text-gray-800'); ?>">
+            <?php echo e($booking->status_dp === 'Lunas' ? 'Lunas DP' : 'Belum DP'); ?>
 
-        </span>
-        <?php endif; ?>
+          </span>
+          <?php endif; ?>
+          <span class="text-xs text-gray-500"></span>
+        </div>
       </div>
 
       <div id="detail<?php echo e($booking->id); ?>" class="mt-3 hidden">
@@ -46,17 +49,26 @@
 
           <div class="font-medium">Tipe Layanan:</div>
           <div>
-            <span class="inline-block text-xs px-2 py-1 rounded 
-              <?php echo e($booking->tipe_layanan === 'home_service' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'); ?>">
-              <?php echo e($booking->tipe_layanan ? ucwords(str_replace('_', ' ', implode(', ', (array)$booking->tipe_layanan))) : 'Tidak Diketahui'); ?>
+            <?php if(is_array($booking->tipe_layanan)): ?>
+              <?php $__currentLoopData = $booking->tipe_layanan; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tipe): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <span class="inline-block text-xs px-2 py-1 rounded 
+                  <?php echo e($tipe === 'home_service' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'); ?> mr-1 mb-1">
+                  <?php echo e($tipe === 'home_service' ? 'Home Service' : 'Studio'); ?>
 
-            </span>
+                </span>
+              <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+            <?php else: ?>
+              <span class="text-gray-500 italic">Tidak tersedia</span>
+            <?php endif; ?>
           </div>
-
 
           <div class="font-medium">Status Reservasi:</div>
           <div>
-            <span class="inline-block text-xs px-2 py-1 rounded bg-purple-500 text-white font-semibold">
+            <span class="inline-block text-xs px-2 py-1 rounded 
+              <?php echo e($booking->status === 'Menunggu' ? 'bg-yellow-500 text-white' : 
+                 ($booking->status === 'Dikonfirmasi' ? 'bg-green-500 text-white' : 
+                 ($booking->status === 'Selesai' ? 'bg-blue-500 text-white' : 
+                 'bg-red-500 text-white'))); ?> font-semibold">
               <?php echo e(ucfirst($booking->status)); ?>
 
             </span>
@@ -126,7 +138,7 @@
 
         
         <div class="mt-3 flex gap-2 flex-wrap">
-          <?php if(strtolower($booking->status) === 'menunggu'): ?>
+          <?php if($booking->status === 'Menunggu'): ?>
           <form action="<?php echo e(route('customer.booking.cancel', $booking->id)); ?>" method="POST" onsubmit="return confirm('Yakin ingin membatalkan reservasi ini?')">
             <?php echo csrf_field(); ?>
             <?php echo method_field('DELETE'); ?>
@@ -157,5 +169,4 @@
   }
 </script>
 <?php $__env->stopSection(); ?>
-
 <?php echo $__env->make('customer.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\ASVS\Documents\PBL S5\fix\abee\resources\views/customer/reservasiaktif/index.blade.php ENDPATH**/ ?>

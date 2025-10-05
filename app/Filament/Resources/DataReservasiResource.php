@@ -119,11 +119,7 @@ class DataReservasiResource extends Resource
                             ->default('Belum')
                             ->required(),
                         Forms\Components\FileUpload::make('bukti_transfer')
-                            ->label('Bukti Transfer')
-                            ->image()
-                            ->directory('bukti')
-                            ->imagePreviewHeight('250')
-                            ->maxSize(2048),
+                            ->directory('bukti'),
                     ])->columns(2),
             ]);
     }
@@ -170,10 +166,11 @@ class DataReservasiResource extends Resource
                     ->sortable(),
                 Tables\Columns\ImageColumn::make('bukti_transfer')
                     ->label('Bukti Transfer')
-                    ->size(60)
-                    ->defaultImageUrl(url('/images/no-image.png'))
-                    ->tooltip('Klik untuk melihat')
-                    ->circular(),
+                    ->disk('public') // penting! agar membaca dari storage/app/public
+                    ->visibility('visible')
+                    ->size(80) // opsional, bisa ubah sesuai kebutuhan
+                    ->url(fn($record) => asset('storage/' . $record->bukti_transfer)) // agar bisa diklik
+                    ->openUrlInNewTab(), // buka gambar di tab baru
                 Tables\Columns\TextColumn::make('status_dp')
                     ->label('Status Pembayaran')
                     ->badge()
@@ -192,43 +189,43 @@ class DataReservasiResource extends Resource
                         'Selesai' => 'info',
                         default => 'gray',
                     }),
-                    ])
-                    ->filters([
-                        SelectFilter::make('status')
-                            ->label('Status Reservasi')
-                            ->options([
-                                'Menunggu' => 'Menunggu',
-                                'Dikonfirmasi' => 'Dikonfirmasi',
-                                'Dibatalkan' => 'Dibatalkan',
-                                'Selesai' => 'Selesai',
-                            ]),
-                        SelectFilter::make('status_dp')
-                            ->label('Status Pembayaran')
-                            ->options([
-                                'Belum' => 'Belum',
-                                'Lunas' => 'Lunas',
-                            ]),
-                        SelectFilter::make('service_id')
-                            ->label('Layanan')
-                            ->relationship('service', 'name'),
-                    ])
-                            ->actions([
-                                Tables\Actions\Action::make('confirmDp')
-                                    ->label('Konfirmasi DP')
-                                    ->icon('heroicon-o-check-circle')
-                                    ->color('success')
-                                    ->visible(fn(CustomerBooking $record) => $record->status_dp === 'Belum' && $record->bukti_transfer)
-                                    ->requiresConfirmation()
-                                    ->action(function (CustomerBooking $record) {
-                                        $record->update([
-                                            'status_dp' => 'Lunas',
-                                            'status' => 'Dikonfirmasi',
-                                        ]);
-                                        Notification::make()
-                                            ->title('DP Dikonfirmasi')
-                                            ->success()
-                                            ->send();
-                                    }),
+            ])
+            ->filters([
+                SelectFilter::make('status')
+                    ->label('Status Reservasi')
+                    ->options([
+                        'Menunggu' => 'Menunggu',
+                        'Dikonfirmasi' => 'Dikonfirmasi',
+                        'Dibatalkan' => 'Dibatalkan',
+                        'Selesai' => 'Selesai',
+                    ]),
+                SelectFilter::make('status_dp')
+                    ->label('Status Pembayaran')
+                    ->options([
+                        'Belum' => 'Belum',
+                        'Lunas' => 'Lunas',
+                    ]),
+                SelectFilter::make('service_id')
+                    ->label('Layanan')
+                    ->relationship('service', 'name'),
+            ])
+            ->actions([
+                Tables\Actions\Action::make('confirmDp')
+                    ->label('Konfirmasi DP')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->visible(fn(CustomerBooking $record) => $record->status_dp === 'Belum' && $record->bukti_transfer)
+                    ->requiresConfirmation()
+                    ->action(function (CustomerBooking $record) {
+                        $record->update([
+                            'status_dp' => 'Lunas',
+                            'status' => 'Dikonfirmasi',
+                        ]);
+                        Notification::make()
+                            ->title('DP Dikonfirmasi')
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\Action::make('rejectDp')
                     ->label('Tolak DP')
                     ->icon('heroicon-o-x-circle')
