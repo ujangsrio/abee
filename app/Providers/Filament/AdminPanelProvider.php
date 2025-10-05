@@ -21,6 +21,7 @@ use App\Filament\Widgets\PelangganChart;
 use App\Filament\Widgets\ReservasiChart;
 use App\Filament\Widgets\PendapatanChart;
 use App\Filament\Widgets\StatsOverview;
+use Filament\Models\Contracts\FilamentUser;
 
 
 class AdminPanelProvider extends PanelProvider

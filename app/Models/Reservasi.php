@@ -20,7 +20,7 @@ class Reservasi extends Model
     ];
 
     protected $casts = [
-        'tanggal' => 'date',
+        // 'tanggal' => 'date',
     ];
 
     public function pelanggan()

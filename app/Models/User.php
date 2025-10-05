@@ -14,7 +14,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role', 
+        'role',
         'whatsapp',
     ];
 
@@ -41,4 +41,3 @@ class User extends Authenticatable
         return $this->hasOne(Customer::class);
     }
 }
-

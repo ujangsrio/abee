@@ -40,6 +40,17 @@ class LayananResource extends Resource
                     ->numeric()
                     ->prefix('Rp'),
 
+                Forms\Components\DatePicker::make('tanggal')
+                    ->label('Tanggal')
+                    ->required()
+                    ->default(now()->format('Y-m-d')),
+
+                Forms\Components\TimePicker::make('jam')
+                    ->label('Jam')
+                    ->required()
+                    ->seconds(false)
+                    ->default(now()->format('H:i')),
+
                 Forms\Components\Textarea::make('deskripsi')
                     ->label('Deskripsi')
                     ->maxLength(255)
@@ -51,6 +62,12 @@ class LayananResource extends Resource
                     ->directory('photos')
                     ->maxSize(2048),
 
+                Forms\Components\Select::make('promo_id')
+                    ->label('Promo')
+                    ->relationship('promo', 'nama_promo')
+                    ->searchable()
+                    ->preload(),
+
                 Forms\Components\CheckboxList::make('tipe_layanan')
                     ->label('Tipe Layanan')
                     ->options([
@@ -59,33 +76,50 @@ class LayananResource extends Resource
                     ])
                     ->columns(2),
 
-                Forms\Components\Select::make('promo_id')
-                    ->label('Promo')
-                    ->relationship('promo', 'nama_promo')
-                    ->searchable()
-                    ->preload(),
-
-                Forms\Components\Repeater::make('slots')
-                    ->label('Slot Tersedia')
-                    ->relationship()
+                
+                Forms\Components\Section::make('Slot')
                     ->schema([
-                        Forms\Components\DatePicker::make('tanggal')
-                            ->label('Tanggal')
-                            ->required(),
-                        Forms\Components\TimePicker::make('jam')
-                            ->label('Jam')
-                            ->required()
-                            ->seconds(false),
+                        Forms\Components\Repeater::make('slots')
+                            ->label('Daftar Slot')
+                            ->relationship('slots')
+                            ->schema([
+                                Forms\Components\Grid::make()
+                                    ->schema([
+                                        Forms\Components\DatePicker::make('tanggal')
+                                            ->label('Tanggal Slot')
+                                            ->required()
+                                            ->default(now()->format('Y-m-d')),
+                                    ]),
+                                Forms\Components\Grid::make()
+                                    ->schema([
+                                        Forms\Components\TimePicker::make('jam')
+                                            ->label('Jam Slot')
+                                            ->required()
+                                            ->seconds(false)
+                                            ->default(now()->format('H:i')),
+                                    ]),
+                            ])
+                            ->columns(1)
+                            ->defaultItems(0)
+                            ->collapsible()
+                            ->reorderable()
+                            ->addActionLabel('Tambah Slot')
+                            ->minItems(0)
+                            ->itemLabel(
+                                fn(array $state): ?string =>
+                                $state['tanggal'] && $state['jam']
+                                    ? "Slot: {$state['tanggal']} {$state['jam']}"
+                                    : null
+                            ),
                     ])
-                    ->columns(2)
-                    ->defaultItems(0)
                     ->collapsible(),
+
             ]);
     }
 
     public static function table(Table $table): Table
     {
-        return $table   
+        return $table
             ->columns([
                 Tables\Columns\TextColumn::make('id')
                     ->label('ID')

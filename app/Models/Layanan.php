@@ -25,7 +25,7 @@ class Layanan extends Model
     ];
 
     protected $casts = [
-        'tanggal' => 'date',
+        // 'tanggal' => 'date',
         'is_promo' => 'boolean',
         'tipe_layanan' => 'array',
     ];
