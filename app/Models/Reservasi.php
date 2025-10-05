@@ -16,6 +16,11 @@ class Reservasi extends Model
         'bukti_transfer',
         'kontak',
         'tipe_layanan',
+        'status',
+    ];
+
+    protected $casts = [
+        'tanggal' => 'date',
     ];
 
     public function pelanggan()

@@ -191,7 +191,7 @@ class BookingController extends Controller
             return back()->withErrors(['msg' => 'Data pelanggan tidak ditemukan.']);
         }
 
-        $bookings = CustomerBooking::with(['service', 'service.promo'])
+        $bookings = CustomerBooking::with(['service'])
             ->where('customer_id', $customerProfile->id)
             ->whereNotIn('status', ['Selesai', 'Dibatalkan'])
             ->orderBy('date', 'asc')

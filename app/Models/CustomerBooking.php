@@ -13,53 +13,35 @@ class CustomerBooking extends Model
         'customer_id',
         'customer_name',
         'service_id',
+        'nama',
         'date',
         'time',
-        'variasi',
-        'bukti_transfer',
+        'tipe_layanan',
         'status',
         'status_dp',
         'tipe_pembayaran',
-        'tipe_layanan',
+        'variasi',
+        'bukti_transfer',
     ];
 
     protected $casts = [
-        'variasi' => 'array',
+        // 'date' => 'date',
         'tipe_layanan' => 'array',
+        'variasi' => 'array',
     ];
-
-    // Default biar aman kalau kosong
-    protected $attributes = [
-        'variasi' => '[]',
-        'tipe_layanan' => '[]',
-    ];
-
-    public function service()
-    {
-        return $this->belongsTo(Layanan::class, 'service_id');
-    }
 
     public function customer()
     {
-        return $this->belongsTo(Customer::class, 'customer_id');
+        return $this->belongsTo(Customer::class);
     }
 
-    protected static function booted()
+    public function service()
     {
-        static::creating(function ($booking) {
-            if (empty($booking->status)) {
-                $booking->status = 'Menunggu';
-            }
+        return $this->belongsTo(CustomerService::class, 'service_id');
+    }
 
-            if ($booking->status_dp === 'Lunas') {
-                $booking->status = 'Dikonfirmasi';
-            }
-        });
-
-        static::updating(function ($booking) {
-            if ($booking->status_dp === 'Lunas' && !in_array($booking->status, ['Selesai', 'Dibatalkan'])) {
-                $booking->status = 'Dikonfirmasi';
-            }
-        });
+    public function layanan()
+    {
+        return $this->belongsTo(CustomerLayanan::class, 'service_id');
     }
 }

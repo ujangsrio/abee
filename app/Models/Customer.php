@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Customer extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'user_id',
         'name',
@@ -15,8 +18,8 @@ class Customer extends Model
         'photo',
     ];
 
-    protected $hidden = [
-        'remember_token',
+    protected $casts = [
+        'is_member' => 'boolean',
     ];
 
     public function user()
@@ -24,14 +27,8 @@ class Customer extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function services()
+    public function bookings()
     {
-        return $this->belongsToMany(CustomerService::class, 'customer_service_customer', 'customer_id', 'service_id');
-    }
-
-    public function membership()
-    {
-        return $this->hasOne(CustomerMembership::class);
+        return $this->hasMany(CustomerBooking::class);
     }
 }
-

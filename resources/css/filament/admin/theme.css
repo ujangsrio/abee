@@ -1,0 +1,105 @@
+/* Layout untuk dashboard */
+.filament-page {
+    max-width: 100% !important;
+}
+
+.filament-widgets-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Card widgets - sejajar dalam satu baris */
+.fi-wi-stats-overview {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+/* Chart widgets dengan filter */
+.fi-wi-chart {
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+/* Container chart */
+.fi-wi-chart > div {
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+    height: 350px !important;
+}
+
+/* Canvas chart */
+.fi-wi-chart canvas {
+    max-height: 250px !important;
+    height: 250px !important;
+}
+
+/* Form filter dropdown */
+.fi-wi-chart .fi-fo-component {
+    margin-bottom: 0.5rem;
+}
+
+.fi-wi-chart .fi-fo-field-wrapper {
+    padding: 0;
+}
+
+/* Grid untuk filter form */
+.fi-section-content-ctn .fi-fo-component:first-child {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    align-items: end;
+}
+
+/* Style untuk dropdown */
+.fi-fo-select {
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.fi-fo-select:focus {
+    border-color: #6366f1;
+    ring: 2px solid rgba(99, 102, 241, 0.2);
+}
+
+/* Label dropdown */
+.fi-fo-field-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.25rem;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+    .fi-wi-stats-overview {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .fi-section-content-ctn .fi-fo-component:first-child {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .fi-wi-stats-overview {
+        grid-template-columns: 1fr;
+    }
+
+    .fi-wi-chart > div {
+        padding: 0.75rem;
+        height: 320px !important;
+    }
+
+    .fi-wi-chart canvas {
+        max-height: 220px !important;
+        height: 220px !important;
+    }
+}
