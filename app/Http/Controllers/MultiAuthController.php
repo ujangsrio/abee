@@ -31,7 +31,7 @@ class MultiAuthController extends Controller
             $user = Auth::guard('admin')->user();
             if ($user->role === 'admin') {
                 $request->session()->regenerate();
-                return redirect()->intended('/admin/dashboard');
+                return redirect()->intended('/admin');
             } else {
                 Auth::guard('admin')->logout();
             }
