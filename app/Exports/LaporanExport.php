@@ -16,11 +16,13 @@ class LaporanExport
 {
     protected $startDate;
     protected $endDate;
+    protected $status;
 
-    public function __construct($startDate = null, $endDate = null)
+    public function __construct($startDate = null, $endDate = null, $status = null)
     {
         $this->startDate = $startDate;
         $this->endDate = $endDate;
+        $this->status = $status;
     }
 
     private function cleanText($text)
@@ -128,6 +130,10 @@ class LaporanExport
         $query = CustomerBooking::query();
         if ($this->startDate && $this->endDate) {
             $query->whereBetween('date', [$this->startDate, $this->endDate]);
+        }
+
+        if ($this->status) {
+        $query->where('status', $this->status);
         }
         return $query->orderBy('date', 'desc')->get();
     }

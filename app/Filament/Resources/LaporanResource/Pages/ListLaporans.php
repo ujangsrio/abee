@@ -9,6 +9,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use App\Exports\LaporanExport;
 use Illuminate\Support\Carbon;
+use Illuminate\Http\Request;
 use App\Exports\LaporanPdf; 
 
 class ListLaporans extends ListRecords
@@ -18,25 +19,18 @@ class ListLaporans extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('export_csv')
-                ->label('Export CSV')
-                ->icon('heroicon-o-document-arrow-down')
+            Actions\Action::make('export')
+                ->label('Export ke Excel')
+                ->icon('heroicon-o-arrow-down-tray')
                 ->color('success')
-                ->action(function () {
-                    $export = new LaporanExport();
-                    return $export->download();
-                }),
+                ->action(function (array $data, Request $request) {
+                    $startDate = $this->tableFilters['date_range']['start_date'] ?? null;
+                    $endDate = $this->tableFilters['date_range']['end_date'] ?? null;
+                    $status = $this->tableFilters['status'] ?? null; 
 
-            // // Tambahkan action ini di getHeaderActions()
-            // Action::make('export_pdf')
-            //     ->label('Export HTML/PDF')
-            //     ->icon('heroicon-o-document')
-            //     ->color('danger')
-            //     ->action(function () {
-            //         $export = new \App\Exports\LaporanPdf();
-            //         return $export->download();
-            //     }),
-        
+                    $export = new LaporanExport($startDate, $endDate, $status);
+                    return $export->download();
+                }), 
         ];
     }
 
