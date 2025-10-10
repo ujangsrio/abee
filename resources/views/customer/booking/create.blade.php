@@ -199,20 +199,29 @@
             $('#service_id').val(serviceId);
             $('#tanggal_hidden').val(tanggal);
 
-            if (serviceId) {
+            if (serviceId && tanggal) {
+                // Reset form sections
+                $('#serviceTypeOption').hide();
+                $('#paymentOption').hide();
+                $('#costBreakdown').hide();
+                $('#paymentInfo').hide();
+                $('#buktiTransferSection').hide();
+                $('#timeSelect').empty().append('<option value="">-- Memuat jam... --</option>');
+
                 // Ambil jam tersedia
                 $.get('{{ route("customer.booking.availableTimes") }}', {
                     service_id: serviceId,
                     tanggal: tanggal
                 }, function (data) {
-                    availableTimes = data.map(item => item.jam.substring(0, 5)); // simpan semua jam
+                    availableTimes = data.map(item => item.jam);
                     renderTimeOptions();
                     
                     if (availableTimes.length === 0) {
-                        $('#timeSelect').append('<option value="" disabled>Tidak ada jam tersedia</option>');
+                        $('#timeSelect').html('<option value="" disabled>Tidak ada jam tersedia</option>');
                     }
                 }).fail(function() {
-                    alert('Gagal memuat jam tersedia. Silakan coba lagi.');
+                    $('#timeSelect').html('<option value="" disabled>Gagal memuat jam</option>');
+                    console.error('Failed to load available times');
                 });
 
                 // Hitung biaya total + tipe layanan
@@ -221,6 +230,7 @@
                 }, function (data) {
                     window.costData = data;
 
+                    // Update cost breakdown
                     $('#serviceName').text(data.service_name);
                     $('#basePrice').text(formatRupiah(data.base_price));
                     $('#totalAfterDiscount').text(formatRupiah(data.total_after_discount));
@@ -228,65 +238,63 @@
                     if (data.discount > 0) {
                         $('#discountRow').show();
                         $('#promoName').text(data.promo_name || 'Promo');
-                        $('#discountAmount').text(formatRupiah(data.discount));
+                        $('#discountAmount').text('- ' + formatRupiah(data.discount));
                     } else {
                         $('#discountRow').hide();
                     }
 
-                    // Parse tipe layanan dari admin
-                    let tipeLayanan = Array.isArray(data.service_type) && data.service_type.length > 0 
-                        ? data.service_type[0] 
-                        : (data.service_type || 'studio');
-                    $('#tipe_layanan').val(tipeLayanan);
+                    // Handle service type
+                    let tipeLayanan = 'studio'; // default
+                    if (data.service_type && Array.isArray(data.service_type) && data.service_type.length > 0) {
+                        tipeLayanan = data.service_type[0];
+                    } else if (data.service_type && typeof data.service_type === 'string') {
+                        try {
+                            const parsed = JSON.parse(data.service_type);
+                            tipeLayanan = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : 'studio';
+                        } catch (e) {
+                            tipeLayanan = data.service_type;
+                        }
+                    }
                     
-                    // Update tampilan tipe layanan
+                    $('#tipe_layanan').val(tipeLayanan);
                     updateServiceTypeDisplay(tipeLayanan);
                     
+                    // Update payment display
                     updatePaymentDisplay();
 
+                    // Show sections
                     $('#serviceTypeOption').show();
                     $('#paymentOption').show();
                     $('#costBreakdown').show();
                     $('#paymentInfo').show();
                     $('#buktiTransferSection').show();
+
+                    validateForm();
+
                 }).fail(function() {
-                    alert('Gagal memuat informasi biaya. Silakan coba lagi.');
+                    console.error('Failed to load cost data');
+                    alert('Gagal memuat informasi biaya. Silakan refresh halaman.');
                 });
 
             } else {
-                $('#costBreakdown').hide();
-                $('#serviceTypeOption').hide();
-                $('#paymentOption').hide();
-                $('#paymentInfo').hide();
-                $('#buktiTransferSection').hide();
-                $('#timeSelect').empty().append('<option value="">-- Pilih waktu --</option>');
+                resetForm();
             }
         });
 
-        // Jika user pilih jam, hapus dari daftar
-        $('#timeSelect').on('change', function () {
-            const chosen = $(this).val();
-            if (chosen) {
-                availableTimes = availableTimes.filter(time => time !== chosen);
-                renderTimeOptions(chosen); // render ulang, tapi biarkan pilihan tetap tersimpan
-            }
-        });
-
-        function renderTimeOptions(selected = '') {
+        function renderTimeOptions() {
             const timeSelect = $('#timeSelect');
             timeSelect.empty().append('<option value="">-- Pilih waktu --</option>');
 
-            if (selected) {
-                timeSelect.append(`<option value="${selected}" selected>${selected}</option>`);
+            if (availableTimes.length > 0) {
+                availableTimes.forEach(time => {
+                    timeSelect.append(`<option value="${time}">${time}</option>`);
+                });
             }
-
-            availableTimes.forEach(time => {
-                timeSelect.append(`<option value="${time}">${time}</option>`);
-            });
         }
 
         $('input[name="tipe_pembayaran"]').on('change', function() {
             updatePaymentDisplay();
+            validateForm();
         });
 
         function updatePaymentDisplay() {
@@ -312,69 +320,31 @@
                 $('#dpInfo').show();
             }
         }
-        
-        // Form validation
-        function validateForm() {
-            const serviceId = $('#service_id').val();
-            const time = $('#timeSelect').val();
-            const buktiTransfer = $('#bukti_transfer')[0].files.length > 0;
-            
-            const isValid = serviceId && time && buktiTransfer;
-            $('#submitBtn').prop('disabled', !isValid);
-        }
 
-        // Check validation on form changes
-        $('#layananSelect, #timeSelect, #bukti_transfer').on('change', validateForm);
-        
-        // Form submit handling
-        $('form').on('submit', function() {
-            $('#submitBtn').prop('disabled', true);
-            $('#submitText').hide();
-            $('#loadingText').show();
-        });
-        
-        // Update tampilan tipe layanan dengan styling
         function updateServiceTypeDisplay(tipeLayanan) {
             const serviceTypeConfig = {
                 'studio': {
-                    icon: '',
+                    icon: '🏢',
                     name: 'Studio',
-                    desc: 'Datang ke Salon',
+                    desc: 'Datang ke Salon Kami',
                     bgColor: 'bg-blue-50',
                     borderColor: 'border-blue-200',
                     textColor: 'text-blue-800'
                 },
-                'home_visit': {
-                    icon: '',
+                'home_service': {
+                    icon: '🏠',
                     name: 'Home Service',
                     desc: 'Kami Datang ke Lokasi Anda',
                     bgColor: 'bg-green-50',
                     borderColor: 'border-green-200',
                     textColor: 'text-green-800'
-                },
-                'party': {
-                    icon: '',
-                    name: 'Party',
-                    desc: 'Layanan untuk acara khusus',
-                    bgColor: 'bg-purple-50',
-                    borderColor: 'border-purple-200',
-                    textColor: 'text-purple-800'
-                },
-                'wedding': {
-                    icon: '',
-                    name: 'Wedding',
-                    desc: 'Layanan pernikahan',
-                    bgColor: 'bg-pink-50',
-                    borderColor: 'border-pink-200',
-                    textColor: 'text-pink-800'
                 }
             };
 
             const config = serviceTypeConfig[tipeLayanan] || {
-                icon: '',
-                // name: tipeLayanan.charAt(0).toUpperCase() + tipeLayanan.slice(1),
-                name: 'Home Service',
-                desc: 'Kami datang ke lokasi Anda',
+                icon: '❓',
+                name: tipeLayanan ? tipeLayanan.charAt(0).toUpperCase() + tipeLayanan.slice(1).replace('_', ' ') : 'Layanan',
+                desc: 'Tipe layanan dipilih otomatis',
                 bgColor: 'bg-gray-50',
                 borderColor: 'border-gray-200',
                 textColor: 'text-gray-800'
@@ -388,9 +358,45 @@
             $('#serviceTypeDesc').text(config.desc);
         }
 
-        window.updatePaymentDisplay = updatePaymentDisplay;
-        window.validateForm = validateForm;
-        window.updateServiceTypeDisplay = updateServiceTypeDisplay;
+        function validateForm() {
+            const serviceId = $('#service_id').val();
+            const time = $('#timeSelect').val();
+            const buktiTransfer = $('#bukti_transfer')[0].files.length > 0;
+            
+            const isValid = serviceId && time && buktiTransfer;
+            $('#submitBtn').prop('disabled', !isValid);
+            return isValid;
+        }
+
+        function resetForm() {
+            $('#serviceTypeOption').hide();
+            $('#paymentOption').hide();
+            $('#costBreakdown').hide();
+            $('#paymentInfo').hide();
+            $('#buktiTransferSection').hide();
+            $('#timeSelect').empty().append('<option value="">-- Pilih waktu --</option>');
+            $('#submitBtn').prop('disabled', true);
+        }
+
+        // Check validation on form changes
+        $('#timeSelect, #bukti_transfer').on('change', validateForm);
+
+        // Form submit handling
+        $('form').on('submit', function(e) {
+            if (!validateForm()) {
+                e.preventDefault();
+                alert('Harap lengkapi semua field yang diperlukan.');
+                return false;
+            }
+            
+            $('#submitBtn').prop('disabled', true);
+            $('#submitText').hide();
+            $('#loadingText').show();
+            return true;
+        });
+
+        // Initialize
+        resetForm();
     });
 </script>
 @endsection

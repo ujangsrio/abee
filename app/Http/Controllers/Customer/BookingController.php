@@ -2,317 +2,380 @@
 
 namespace App\Http\Controllers\Customer;
 
-use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\Customer;
 use App\Models\CustomerBooking;
 use App\Models\Layanan;
 use App\Models\Slot;
+use App\Models\Customer;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class BookingController extends Controller
 {
-    // Tampilkan form booking
     public function create()
     {
-        // Ambil semua layanan yang tanggal-nya belum lewat
-        $layanans = Layanan::where('tanggal', '>=', now()->toDateString())
-            ->orderBy('tanggal')
-            ->get();
+        try {
+            // Ambil layanan yang aktif dengan slot tersedia
+            $layananWithSlots = Layanan::whereHas('slots', function ($query) {
+                $query->where('tanggal', '>=', now()->format('Y-m-d'));
+            })
+                ->with(['slots' => function ($query) {
+                    $query->where('tanggal', '>=', now()->format('Y-m-d'))
+                        ->orderBy('tanggal')
+                        ->orderBy('jam');
+                }])
+                ->get();
 
-        // Kelompokkan layanan berdasarkan tanggal
-        $tanggalJam = $layanans->groupBy('tanggal');
+            // Format data untuk dropdown
+            $tanggalJam = [];
+            foreach ($layananWithSlots as $layanan) {
+                foreach ($layanan->slots as $slot) {
+                    $tanggal = is_object($slot->tanggal) ? $slot->tanggal->format('Y-m-d') : $slot->tanggal;
 
-        return view('customer.booking.create', compact('tanggalJam'));
-    }
+                    if (!isset($tanggalJam[$tanggal])) {
+                        $tanggalJam[$tanggal] = [];
+                    }
 
-    // Simpan booking
-    public function store(Request $request)
-    {
-        $request->validate([
-            'service_id' => 'required|exists:layanans,id',
-            'time' => 'required|date_format:H:i',
-            'tipe_pembayaran' => 'required|in:dp,full',
-            'bukti_transfer' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
-
-        $user = Auth::guard('customer')->user();
-        $customer = Customer::where('user_id', $user->id)->first();
-
-        if (!$customer) {
-            return back()->with('error', 'Data customer tidak ditemukan.');
-        }
-
-        $layanan = Layanan::findOrFail($request->service_id);
-
-        if (!$layanan->tanggal) {
-            return back()->with('error', 'Layanan belum memiliki tanggal tersedia.');
-        }
-
-        $date = $layanan->tanggal;
-
-        // Periksa apakah slot sudah dibooking
-        $exists = CustomerBooking::where('date', $date)
-            ->where('time', $request->time)
-            ->where('service_id', $request->service_id)
-            ->whereNotIn('status', ['Dibatalkan'])
-            ->exists();
-
-        if ($exists) {
-            return back()->with('error', 'Jam tersebut sudah dibooking. Silakan pilih waktu lain.');
-        }
-
-        // Ambil tipe layanan dari model
-        $tipeLayanan = $layanan->tipe_layanan ?? ['studio', 'home_service'];
-
-        $buktiPath = null;
-        if ($request->hasFile('bukti_transfer')) {
-            $buktiPath = $request->file('bukti_transfer')->store('bukti', 'public');
-        }
-
-        // Tentukan status DP berdasarkan tipe pembayaran
-        $dpStatus = ($request->tipe_pembayaran === 'full') ? 'Lunas' : 'Belum';
-        $status = 'Menunggu';
-
-        CustomerBooking::create([
-            'customer_id' => $customer->id,
-            'customer_name' => $customer->name,
-            'service_id' => $request->service_id,
-            'date' => $date,
-            'time' => $request->time,
-            'tipe_layanan' => $tipeLayanan,
-            'status' => $status,
-            'bukti_transfer' => $buktiPath,
-            'tipe_pembayaran' => $request->tipe_pembayaran,
-            'status_dp' => $dpStatus,
-        ]);
-
-        $message = $request->tipe_pembayaran === 'full'
-            ? 'Booking berhasil! Pembayaran lunas sudah diterima.'
-            : 'Booking berhasil! Menunggu konfirmasi pembayaran DP.';
-
-        return redirect()->route('customer.reservasiaktif')->with('success', $message);
-    }
-
-    // API: Ambil jam tersedia
-    public function availableTimes(Request $request)
-    {
-        $serviceId = $request->service_id;
-        $layanan = Layanan::find($serviceId);
-
-        if (!$layanan || !$layanan->tanggal) {
-            return response()->json([]);
-        }
-
-        $tanggal = $layanan->tanggal;
-
-        // Ambil semua slot yang cocok
-        $slots = Slot::where('layanan_id', $serviceId)
-            ->where('tanggal', $tanggal)
-            ->pluck('jam');
-
-        // Ambil jam yang sudah dibooking di tanggal tersebut (kecuali yang dibatalkan)
-        $bookedTimes = CustomerBooking::where('service_id', $serviceId)
-            ->where('date', $tanggal)
-            ->whereNotIn('status', ['Dibatalkan'])
-            ->pluck('time')
-            ->toArray();
-
-        // Filter slot yang belum dibooking
-        $availableSlots = $slots->filter(function ($jam) use ($bookedTimes) {
-            return !in_array($jam, $bookedTimes);
-        })->map(function ($jam) {
-            return ['jam' => $jam];
-        })->values();
-
-        return response()->json($availableSlots);
-    }
-
-    // Hitung total biaya berdasarkan layanan
-    public function calculateTotalCost(Request $request)
-    {
-        $serviceId = $request->service_id;
-        $layanan = Layanan::with('promo')->find($serviceId);
-
-        if (!$layanan) {
-            return response()->json(['error' => 'Layanan tidak ditemukan'], 404);
-        }
-
-        $user = Auth::guard('customer')->user();
-        $customer = Customer::where('user_id', $user->id)->first();
-        $isMember = $customer && $customer->is_member;
-
-        $hargaLayanan = $layanan->harga;
-        $diskon = 0;
-        $totalSetelahDiskon = $hargaLayanan;
-
-        // Cek jika ada promo
-        if ($layanan->promo) {
-            $promo = $layanan->promo;
-            // Cek apakah promo berlaku (belum expired)
-            $isPromoValid = !$promo->tanggal_berakhir || now()->lte($promo->tanggal_berakhir);
-
-            if ($isPromoValid) {
-                // Cek apakah promo hanya untuk member atau untuk semua
-                if (!$promo->hanya_member || ($promo->hanya_member && $isMember)) {
-                    $diskon = ($promo->diskon / 100) * $hargaLayanan;
-                    $totalSetelahDiskon = $hargaLayanan - $diskon;
-                }
-            }
-        }
-
-        $dp = 50000; // DP tetap Rp50.000
-        $sisaPembayaran = max(0, $totalSetelahDiskon - $dp);
-
-        // Ambil tipe layanan dari database
-        $tipeLayanan = $layanan->tipe_layanan ?? ['studio', 'home_service'];
-
-        return response()->json([
-            'service_name' => $layanan->nama,
-            'service_type' => $tipeLayanan,
-            'base_price' => $hargaLayanan,
-            'discount' => $diskon,
-            'total_after_discount' => $totalSetelahDiskon,
-            'dp' => $dp,
-            'remaining_payment' => $sisaPembayaran,
-            'is_member' => $isMember,
-            'promo_name' => $layanan->promo ? $layanan->promo->nama_promo : null
-        ]);
-    }
-
-    public function show($id)
-    {
-        $booking = CustomerBooking::with('service')->findOrFail($id);
-        return view('customer.booking.detail', compact('booking'));
-    }
-
-    public function reservasiAktif()
-    {
-        $user = Auth::guard('customer')->user();
-        $customerProfile = Customer::where('user_id', $user->id)->first();
-
-        if (!$customerProfile) {
-            return back()->withErrors(['msg' => 'Data pelanggan tidak ditemukan.']);
-        }
-
-        $bookings = CustomerBooking::with(['service' => function ($query) {
-            $query->select('id', 'nama', 'harga', 'promo_id');
-        }])
-            ->where('customer_id', $customerProfile->id)
-            ->whereNotIn('status', ['Selesai', 'Dibatalkan'])
-            ->orderBy('date', 'asc')
-            ->orderBy('time', 'asc')
-            ->get();
-
-        $isMember = $customerProfile->is_member ?? false;
-
-       
-
-        // Hitung biaya untuk setiap booking
-        $bookingsWithCost = $bookings->map(function ($booking) use ($isMember) {
-            $layanan = $booking->service;
-
-            if (!$layanan) {
-                $booking->cost_info = [
-                    'base_price' => 0,
-                    'discount' => 0,
-                    'total_after_discount' => 0,
-                    'dp' => 50000,
-                    'remaining_payment' => 0,
-                    'promo_name' => null
-                ];
-                return $booking;
-            }
-
-            $hargaLayanan = $layanan->harga;
-            $diskon = 0;
-            $totalSetelahDiskon = $hargaLayanan;
-            $promoName = null;
-
-            // Cek jika ada promo
-            if ($layanan->promo_id) {
-                $promo = \App\Models\Promo::find($layanan->promo_id);
-                if ($promo) {
-                    $isPromoValid = !$promo->tanggal_berakhir || now()->lte($promo->tanggal_berakhir);
-                    if ($isPromoValid) {
-                        if (!$promo->hanya_member || ($promo->hanya_member && $isMember)) {
-                            $diskon = ($promo->diskon / 100) * $hargaLayanan;
-                            $totalSetelahDiskon = $hargaLayanan - $diskon;
-                            $promoName = $promo->nama_promo;
+                    $exists = false;
+                    foreach ($tanggalJam[$tanggal] as $existingLayanan) {
+                        if ($existingLayanan->id === $layanan->id) {
+                            $exists = true;
+                            break;
                         }
+                    }
+
+                    if (!$exists) {
+                        $tanggalJam[$tanggal][] = $layanan;
                     }
                 }
             }
 
-            $dp = 50000;
-            $isDpConfirmed = $booking->status_dp === 'Lunas';
-            $isFullPayment = $booking->tipe_pembayaran === 'full';
+            ksort($tanggalJam);
 
-            if ($isFullPayment) {
-                $sisaPembayaran = 0;
-            } else {
-                $sisaPembayaran = $isDpConfirmed ? max(0, $totalSetelahDiskon - $dp) : $totalSetelahDiskon - $dp;
+            return view('customer.booking.create', compact('tanggalJam'));
+        } catch (\Exception $e) {
+            Log::error('Error in BookingController@create: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan saat memuat form booking.');
+        }
+    }
+
+    public function availableTimes(Request $request)
+    {
+        try {
+            $request->validate([
+                'service_id' => 'required|exists:layanans,id',
+                'tanggal' => 'required|date'
+            ]);
+
+            $serviceId = $request->service_id;
+            $tanggal = $request->tanggal;
+
+            $availableSlots = Slot::where('layanan_id', $serviceId)
+                ->where('tanggal', $tanggal)
+                ->whereNotExists(function ($query) use ($serviceId, $tanggal) {
+                    $query->select(DB::raw(1))
+                        ->from('customer_bookings')
+                        ->whereColumn('customer_bookings.service_id', 'slots.layanan_id')
+                        ->where('customer_bookings.date', $tanggal)
+                        ->whereColumn('customer_bookings.time', 'slots.jam')
+                        ->whereIn('customer_bookings.status', ['Menunggu', 'Dikonfirmasi']);
+                })
+                ->get()
+                ->map(function ($slot) {
+                    return [
+                        'jam' => \Carbon\Carbon::parse($slot->jam)->format('H:i')
+                    ];
+                });
+
+            return response()->json($availableSlots);
+        } catch (\Exception $e) {
+            Log::error('Error in availableTimes: ' . $e->getMessage());
+            return response()->json([], 500);
+        }
+    }
+
+    public function calculateTotalCost(Request $request)
+    {
+        try {
+            $request->validate([
+                'service_id' => 'required|exists:layanans,id'
+            ]);
+
+            $serviceId = $request->service_id;
+            $layanan = Layanan::findOrFail($serviceId);
+
+            $basePrice = $layanan->harga;
+            $discount = 0;
+            $promoName = null;
+            $totalAfterDiscount = $basePrice - $discount;
+            $dp = 50000;
+            $remainingPayment = $totalAfterDiscount - $dp;
+
+            $serviceType = $layanan->tipe_layanan;
+
+            if (is_string($serviceType)) {
+                try {
+                    $decoded = json_decode($serviceType, true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $serviceType = $decoded;
+                    }
+                } catch (\Exception $e) {
+                    // Tetap gunakan string asli
+                }
             }
 
-            $booking->cost_info = [
-                'base_price' => $hargaLayanan,
-                'discount' => $diskon,
-                'total_after_discount' => $totalSetelahDiskon,
-                'dp' => $dp,
-                'remaining_payment' => max(0, $sisaPembayaran),
+            if (empty($serviceType)) {
+                $serviceType = ['studio'];
+            }
+
+            if (!is_array($serviceType)) {
+                $serviceType = [$serviceType];
+            }
+
+            return response()->json([
+                'service_name' => $layanan->nama,
+                'base_price' => $basePrice,
+                'discount' => $discount,
                 'promo_name' => $promoName,
-                'is_dp_confirmed' => $isDpConfirmed,
-                'is_full_payment' => $isFullPayment
-            ];
+                'total_after_discount' => $totalAfterDiscount,
+                'dp' => $dp,
+                'remaining_payment' => $remainingPayment,
+                'service_type' => $serviceType
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error in calculateTotalCost: ' . $e->getMessage());
+            return response()->json(['error' => 'Gagal menghitung biaya'], 500);
+        }
+    }
 
-            return $booking;
-        });
-
-        return view('customer.reservasiaktif.index', [
-            'bookings' => $bookingsWithCost,
-            'isMember' => $isMember,
+    public function store(Request $request)
+    {
+        $request->validate([
+            'service_id' => 'required|exists:layanans,id',
+            'time' => 'required',
+            'tanggal' => 'required|date',
+            'tipe_pembayaran' => 'required|in:dp,full',
+            'bukti_transfer' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
+
+        try {
+            $customer = Auth::guard('customer')->user();
+            $customerProfile = $customer->customer;
+
+            if (!$customerProfile) {
+                return back()->with('error', 'Profil customer tidak ditemukan.');
+            }
+
+            $buktiTransferPath = null;
+            if ($request->hasFile('bukti_transfer')) {
+                $buktiTransferPath = $request->file('bukti_transfer')->store('bukti', 'public');
+            }
+
+            $tipeLayanan = $request->tipe_layanan ?: 'studio';
+            $tipeLayananArray = is_array($tipeLayanan) ? $tipeLayanan : [$tipeLayanan];
+
+            $booking = CustomerBooking::create([
+                'customer_id' => $customerProfile->id,
+                'customer_name' => $customer->name,
+                'service_id' => $request->service_id,
+                'date' => $request->tanggal,
+                'time' => $request->time,
+                'tipe_layanan' => json_encode($tipeLayananArray),
+                'status' => 'Menunggu',
+                'status_dp' => 'Belum',
+                'tipe_pembayaran' => $request->tipe_pembayaran,
+                'bukti_transfer' => $buktiTransferPath,
+            ]);
+
+            return redirect()->route('customer.booking.show', $booking->id)
+                ->with('success', 'Booking berhasil dibuat! Silakan tunggu konfirmasi admin.');
+        } catch (\Exception $e) {
+            Log::error('Error in store booking: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    public function reservasiaktif()
+    {
+        try {
+            $customer = Auth::guard('customer')->user();
+            $customerProfile = $customer->customer;
+
+            if (!$customerProfile) {
+                return redirect()->route('customer.dashboard')
+                    ->with('error', 'Profil customer tidak ditemukan.');
+            }
+
+            $bookings = CustomerBooking::with(['service' => function ($query) {
+                $query->select('id', 'nama', 'harga', 'deskripsi', 'gambar', 'tipe_layanan');
+            }])
+                ->where('customer_id', $customerProfile->id)
+                ->whereNotIn('status', ['Selesai', 'Dibatalkan'])
+                ->orderBy('date', 'asc')
+                ->orderBy('time', 'asc')
+                ->get();
+
+            foreach ($bookings as $booking) {
+                $booking->cost_info = $this->calculateBookingCost($booking);
+            }
+
+            $isMember = $customerProfile->is_member;
+
+            // Arahkan ke view dalam subfolder reservasiaktif
+            return view('customer.reservasiaktif.index', compact('bookings', 'isMember'));
+        } catch (\Exception $e) {
+            Log::error('Error in reservasiaktif: ' . $e->getMessage());
+            return redirect()->route('customer.dashboard')
+                ->with('error', 'Terjadi kesalahan saat memuat reservasi aktif.');
+        }
+    }
+
+
+    public function history()
+    {
+        try {
+            $customer = Auth::guard('customer')->user();
+            $customerProfile = $customer->customer;
+
+            if (!$customerProfile) {
+                return redirect()->route('customer.dashboard')
+                    ->with('error', 'Profil customer tidak ditemukan.');
+            }
+
+            $bookings = CustomerBooking::with(['service' => function ($query) {
+                $query->select('id', 'nama', 'harga', 'deskripsi', 'gambar', 'tipe_layanan');
+            }])
+                ->where('customer_id', $customerProfile->id)
+                ->whereIn('status', ['Selesai', 'Dibatalkan'])
+                ->orderBy('date', 'desc')
+                ->orderBy('time', 'desc')
+                ->get();
+
+            foreach ($bookings as $booking) {
+                $booking->cost_info = $this->calculateBookingCost($booking);
+            }
+
+            // Arahkan ke view dalam subfolder history
+            return view('customer.history.index', compact('bookings'));
+        } catch (\Exception $e) {
+            Log::error('Error in history: ' . $e->getMessage());
+            return redirect()->route('customer.dashboard')
+                ->with('error', 'Terjadi kesalahan saat memuat history.');
+        }
+    }
+
+    public function show($id)
+    {
+        try {
+            $customer = Auth::guard('customer')->user();
+            $customerProfile = $customer->customer;
+
+            $booking = CustomerBooking::with(['service' => function ($query) {
+                $query->select('id', 'nama', 'harga', 'deskripsi', 'gambar', 'tipe_layanan');
+            }])
+                ->where('id', $id)
+                ->where('customer_id', $customerProfile->id)
+                ->firstOrFail();
+
+            $booking->cost_info = $this->calculateBookingCost($booking);
+
+            // Jika show.blade.php ada dalam subfolder booking
+            return view('customer.booking.show', compact('booking'));
+        } catch (\Exception $e) {
+            Log::error('Error in show booking: ' . $e->getMessage());
+            return redirect()->route('customer.reservasiaktif')
+                ->with('error', 'Booking tidak ditemukan.');
+        }
     }
 
     public function cancel($id)
     {
-        $booking = CustomerBooking::findOrFail($id);
+        try {
+            $customer = Auth::guard('customer')->user();
+            $customerProfile = $customer->customer;
 
-        // Pastikan booking milik user yang login
-        $user = Auth::guard('customer')->user();
-        $customer = Customer::where('user_id', $user->id)->first();
+            $booking = CustomerBooking::where('id', $id)
+                ->where('customer_id', $customerProfile->id)
+                ->firstOrFail();
 
-        if (!$customer || $booking->customer_id !== $customer->id) {
-            abort(403, 'Tidak diizinkan.');
+            if ($booking->status !== 'Menunggu') {
+                return back()->with('error', 'Hanya booking dengan status Menunggu yang dapat dibatalkan.');
+            }
+
+            $booking->update(['status' => 'Dibatalkan']);
+
+            return redirect()->route('customer.reservasiaktif')
+                ->with('success', 'Booking berhasil dibatalkan.');
+        } catch (\Exception $e) {
+            Log::error('Error in cancel booking: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan saat membatalkan booking.');
         }
-
-        if ($booking->status !== 'Menunggu') {
-            return back()->with('error', 'Reservasi hanya bisa dibatalkan jika masih menunggu konfirmasi.');
-        }
-
-        $booking->update([
-            'status' => 'Dibatalkan',
-            'status_dp' => 'Belum'
-        ]);
-
-        return back()->with('success', 'Reservasi berhasil dibatalkan.');
     }
 
-    public function history()
+    public function availableTimesByDate(Request $request)
     {
-        $user = Auth::guard('customer')->user();
-        $customer = Customer::where('user_id', $user->id)->first();
+        try {
+            $request->validate([
+                'service_id' => 'required|exists:layanans,id',
+                'tanggal' => 'required|date'
+            ]);
 
-        if (!$customer) {
-            return back()->with('error', 'Data customer tidak ditemukan.');
+            $availableSlots = Slot::where('layanan_id', $request->service_id)
+                ->where('tanggal', $request->tanggal)
+                ->whereNotExists(function ($query) use ($request) {
+                    $query->select(DB::raw(1))
+                        ->from('customer_bookings')
+                        ->whereColumn('customer_bookings.service_id', 'slots.layanan_id')
+                        ->where('customer_bookings.date', $request->tanggal)
+                        ->whereColumn('customer_bookings.time', 'slots.jam')
+                        ->whereIn('customer_bookings.status', ['Menunggu', 'Dikonfirmasi']);
+                })
+                ->get()
+                ->map(function ($slot) {
+                    return [
+                        'jam' => \Carbon\Carbon::parse($slot->jam)->format('H:i')
+                    ];
+                });
+
+            return response()->json($availableSlots);
+        } catch (\Exception $e) {
+            Log::error('Error in availableTimesByDate: ' . $e->getMessage());
+            return response()->json([], 500);
+        }
+    }
+
+    /**
+     * Hitung informasi biaya untuk booking
+     */
+    private function calculateBookingCost($booking)
+    {
+        $basePrice = $booking->service->harga ?? 0;
+        $discount = 0;
+        $promoName = null;
+
+        if ($booking->service && $booking->service->is_promo) {
+            $discount = $basePrice * 0.1;
+            $promoName = 'Promo Spesial';
         }
 
-        $bookings = CustomerBooking::with('service')
-            ->where('customer_id', $customer->id)
-            ->orderBy('date', 'desc')
-            ->orderBy('time', 'desc')
-            ->get();
+        $totalAfterDiscount = $basePrice - $discount;
 
-        return view('customer.history.index', compact('bookings'));
+        $isFullPayment = $booking->tipe_pembayaran === 'full';
+        $isDpConfirmed = $booking->status_dp === 'Lunas';
+        $dp = $isFullPayment ? 0 : 50000;
+        $remainingPayment = $isFullPayment ? 0 : ($totalAfterDiscount - $dp);
+
+        return [
+            'base_price' => $basePrice,
+            'discount' => $discount,
+            'promo_name' => $promoName,
+            'total_after_discount' => $totalAfterDiscount,
+            'dp' => $dp,
+            'remaining_payment' => $remainingPayment,
+            'is_full_payment' => $isFullPayment,
+            'is_dp_confirmed' => $isDpConfirmed,
+        ];
     }
 }

@@ -158,14 +158,47 @@ class DataReservasiResource extends Resource
                     ->label('Tipe Layanan')
                     ->formatStateUsing(function ($state) {
                         if (is_array($state)) {
-                            return implode(', ', array_map(function ($item) {
-                                return $item === 'home_service' ? 'Home Service' : 'Studio';
-                            }, $state));
+                            return collect($state)->map(function ($item) {
+                                return match ($item) {
+                                    'home_service' => 'Home Service',
+                                    'studio' => 'Studio',
+                                    default => ucfirst($item)
+                                };
+                            })->implode(', ');
                         }
+
+                        // Jika state adalah string JSON, decode dulu
+                        if (is_string($state)) {
+                            try {
+                                $decoded = json_decode($state, true);
+                                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                    return collect($decoded)->map(function ($item) {
+                                        return match ($item) {
+                                            'home_service' => 'Home Service',
+                                            'studio' => 'Studio',
+                                            default => ucfirst($item)
+                                        };
+                                    })->implode(', ');
+                                }
+                            } catch (\Exception $e) {
+                                // Jika gagal decode, treat as string
+                            }
+                        }
+
+                        // Fallback untuk string biasa
+                        if (is_string($state)) {
+                            return match ($state) {
+                                'home_service' => 'Home Service',
+                                'studio' => 'Studio',
+                                default => ucfirst($state)
+                            };
+                        }
+
                         return $state ?? '-';
                     })
                     ->badge()
                     ->color('primary'),
+
                 Tables\Columns\TextColumn::make('date')
                     ->label('Tanggal')
                     ->date('d/m/Y')

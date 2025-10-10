@@ -3,15 +3,15 @@
 namespace App\Filament\Widgets;
 
 use App\Models\CustomerBooking;
-use App\Models\CustomerLayanan;
+use App\Models\Layanan;
 use Filament\Widgets\ChartWidget;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class PendapatanChart extends ChartWidget
 {
-    protected static ?string $heading = 'Total Pendapatan';
-    protected static ?int $sort = 2;
-
+    protected static ?string $heading = 'Pendapatan';
+    protected static ?int $sort = 3;
 
     public ?string $filter = 'daily';
 
@@ -57,15 +57,13 @@ class PendapatanChart extends ChartWidget
             $date = Carbon::today()->subDays($i);
             $labels[] = $date->format('d M');
 
-            $revenue = CustomerBooking::whereDate('date', $date)
-                ->whereIn('status', ['Dikonfirmasi', 'Selesai'])
-                ->get()
-                ->sum(function ($booking) {
-                    $layanan = CustomerLayanan::find($booking->service_id);
-                    return $layanan ? $layanan->harga : 0;
-                });
+            $pendapatan = DB::table('customer_bookings')
+                ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
+                ->whereDate('customer_bookings.date', $date->format('Y-m-d'))
+                ->where('customer_bookings.status', 'Selesai')
+                ->sum('layanans.harga');
 
-            $data[] = $revenue;
+            $data[] = $pendapatan;
         }
 
         return [
@@ -73,8 +71,10 @@ class PendapatanChart extends ChartWidget
                 [
                     'label' => 'Pendapatan (Rp)',
                     'data' => $data,
-                    'borderColor' => 'rgb(34, 197, 94)',
-                    'backgroundColor' => 'rgba(34, 197, 94, 0.1)',
+                    'borderColor' => 'rgb(16, 185, 129)',
+                    'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
+                    'fill' => true,
+                    'tension' => 0.4,
                 ],
             ],
             'labels' => $labels,
@@ -91,15 +91,16 @@ class PendapatanChart extends ChartWidget
             $endOfWeek = Carbon::now()->subWeeks($i)->endOfWeek();
             $labels[] = 'Minggu ' . $startOfWeek->weekOfYear;
 
-            $revenue = CustomerBooking::whereBetween('date', [$startOfWeek, $endOfWeek])
-                ->whereIn('status', ['Dikonfirmasi', 'Selesai'])
-                ->get()
-                ->sum(function ($booking) {
-                    $layanan = CustomerLayanan::find($booking->service_id);
-                    return $layanan ? $layanan->harga : 0;
-                });
+            $pendapatan = DB::table('customer_bookings')
+                ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
+                ->whereBetween('customer_bookings.date', [
+                    $startOfWeek->format('Y-m-d'),
+                    $endOfWeek->format('Y-m-d')
+                ])
+                ->where('customer_bookings.status', 'Selesai')
+                ->sum('layanans.harga');
 
-            $data[] = $revenue;
+            $data[] = $pendapatan;
         }
 
         return [
@@ -107,8 +108,10 @@ class PendapatanChart extends ChartWidget
                 [
                     'label' => 'Pendapatan (Rp)',
                     'data' => $data,
-                    'borderColor' => 'rgb(34, 197, 94)',
-                    'backgroundColor' => 'rgba(34, 197, 94, 0.1)',
+                    'borderColor' => 'rgb(16, 185, 129)',
+                    'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
+                    'fill' => true,
+                    'tension' => 0.4,
                 ],
             ],
             'labels' => $labels,
@@ -124,16 +127,14 @@ class PendapatanChart extends ChartWidget
             $month = Carbon::now()->subMonths($i);
             $labels[] = $month->format('M Y');
 
-            $revenue = CustomerBooking::whereYear('date', $month->year)
-                ->whereMonth('date', $month->month)
-                ->whereIn('status', ['Dikonfirmasi', 'Selesai'])
-                ->get()
-                ->sum(function ($booking) {
-                    $layanan = CustomerLayanan::find($booking->service_id);
-                    return $layanan ? $layanan->harga : 0;
-                });
+            $pendapatan = DB::table('customer_bookings')
+                ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
+                ->whereYear('customer_bookings.date', $month->year)
+                ->whereMonth('customer_bookings.date', $month->month)
+                ->where('customer_bookings.status', 'Selesai')
+                ->sum('layanans.harga');
 
-            $data[] = $revenue;
+            $data[] = $pendapatan;
         }
 
         return [
@@ -141,8 +142,10 @@ class PendapatanChart extends ChartWidget
                 [
                     'label' => 'Pendapatan (Rp)',
                     'data' => $data,
-                    'borderColor' => 'rgb(34, 197, 94)',
-                    'backgroundColor' => 'rgba(34, 197, 94, 0.1)',
+                    'borderColor' => 'rgb(16, 185, 129)',
+                    'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
+                    'fill' => true,
+                    'tension' => 0.4,
                 ],
             ],
             'labels' => $labels,
@@ -158,15 +161,13 @@ class PendapatanChart extends ChartWidget
             $year = Carbon::now()->subYears($i)->year;
             $labels[] = $year;
 
-            $revenue = CustomerBooking::whereYear('date', $year)
-                ->whereIn('status', ['Dikonfirmasi', 'Selesai'])
-                ->get()
-                ->sum(function ($booking) {
-                    $layanan = CustomerLayanan::find($booking->service_id);
-                    return $layanan ? $layanan->harga : 0;
-                });
+            $pendapatan = DB::table('customer_bookings')
+                ->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
+                ->whereYear('customer_bookings.date', $year)
+                ->where('customer_bookings.status', 'Selesai')
+                ->sum('layanans.harga');
 
-            $data[] = $revenue;
+            $data[] = $pendapatan;
         }
 
         return [
@@ -174,11 +175,62 @@ class PendapatanChart extends ChartWidget
                 [
                     'label' => 'Pendapatan (Rp)',
                     'data' => $data,
-                    'borderColor' => 'rgb(34, 197, 94)',
-                    'backgroundColor' => 'rgba(34, 197, 94, 0.1)',
+                    'borderColor' => 'rgb(16, 185, 129)',
+                    'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
+                    'fill' => true,
+                    'tension' => 0.4,
                 ],
             ],
             'labels' => $labels,
         ];
     }
+
+    protected function getOptions(): array
+    {
+        return [
+            'scales' => [
+                'y' => [
+                    'beginAtZero' => true,
+                    'grid' => [
+                        'drawBorder' => false,
+                    ],
+                    'ticks' => [
+                        'callback' => 'function(value) { 
+                            if (value >= 1000000) {
+                                return "Rp " + (value / 1000000).toFixed(1) + " jt";
+                            } else if (value >= 1000) {
+                                return "Rp " + (value / 1000).toFixed(0) + " rb";
+                            }
+                            return "Rp " + value; 
+                        }'
+                    ]
+                ],
+                'x' => [
+                    'grid' => [
+                        'display' => false,
+                    ]
+                ]
+            ],
+            'plugins' => [
+                'legend' => [
+                    'display' => true,
+                    'position' => 'top',
+                ],
+                'tooltip' => [
+                    'callbacks' => [
+                        'label' => 'function(context) { 
+                            return "Rp " + context.parsed.y.toLocaleString("id-ID"); 
+                        }'
+                    ]
+                ]
+            ],
+            'maintainAspectRatio' => false,
+            'responsive' => true,
+        ];
+    }
+
+    // public function getDescription(): ?string
+    // {
+    //     return 'Grafik pendapatan dari layanan yang sudah selesai';
+    // }
 }

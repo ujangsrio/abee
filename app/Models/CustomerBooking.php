@@ -26,6 +26,11 @@ class CustomerBooking extends Model
         'date' => 'date'
     ];
 
+    public function layanan()
+    {
+        return $this->belongsTo(Layanan::class, 'service_id');
+    }
+
     // Relasi ke model Layanan
     public function service()
     {
@@ -36,5 +41,11 @@ class CustomerBooking extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class, 'customer_id');
+    }
+
+    // app/Models/Layanan.php  
+    public function bookings()
+    {
+        return $this->hasMany(CustomerBooking::class, 'service_id');
     }
 }

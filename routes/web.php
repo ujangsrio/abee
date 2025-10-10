@@ -115,6 +115,7 @@ Route::middleware(['web', 'auth:customer', IsCustomer::class])
         //     return 'Halaman booking belum dibuat';
         // })->name('booking');
         Route::get('/dashboard', [CustomerDashboardController::class, 'dashboard'])->name('dashboard');
+        // Route::get('/reservasiaktif', [BookingController::class, 'reservasiaktif'])->name('reservasiaktif');
         Route::get('/reservasiaktif', [BookingController::class, 'reservasiaktif'])->name('reservasiaktif');
         Route::get('/layanan', [CustomerDashboardController::class, 'layanan'])->name('layanan');
         Route::get('/kontak', [CustomerDashboardController::class, 'kontak'])->name('kontak');
