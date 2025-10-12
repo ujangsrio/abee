@@ -4,52 +4,34 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Layanan extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     protected $fillable = [
         'nama',
         'harga',
         'tanggal',
+        'jam',
         'deskripsi',
         'gambar',
+        'promo_id',
         'total_dipesan',
         'is_promo',
-        'tipe_layanan',
-        'durasi'
     ];
 
     protected $casts = [
-        'harga' => 'decimal:2',
-        'tanggal' => 'date',
-        'is_promo' => 'boolean',
-        'tipe_layanan' => 'array',
-        'total_dipesan' => 'integer',
-        'deleted_at' => 'datetime',
+        'tanggal' => 'date:Y-m-d',
     ];
-
-    public function promo(): BelongsTo
-    {
-        return $this->belongsTo(Promo::class);
-    }
 
     public function slots()
     {
         return $this->hasMany(Slot::class, 'layanan_id');
     }
 
-    public function bookings()
+    public function promo()
     {
-        return $this->hasMany(CustomerBooking::class, 'service_id');
-    }
-
-    public function customerBookings()
-    {
-        return $this->hasMany(CustomerBooking::class, 'service_id');
+        return $this->belongsTo(Promo::class, 'promo_id');
     }
 }
