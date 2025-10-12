@@ -11,6 +11,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Carbon;
 
 class LayananResource extends Resource
 {
@@ -49,25 +50,11 @@ class LayananResource extends Resource
                             ->minValue(0)
                             ->prefix('Rp')
                             ->columnSpan(1),
-
-                        // Forms\Components\TextInput::make('durasi')
-                        //     ->label('Durasi (menit)')
-                        //     ->numeric()
-                        //     ->minValue(1)
-                        //     ->default(60)
-                        //     ->suffix('menit')
-                        //     ->columnSpan(1),
                     ])
                     ->columns(2),
 
                 Forms\Components\Section::make('Pengaturan Layanan')
                     ->schema([
-                        // Forms\Components\DatePicker::make('tanggal')
-                        //     ->label('Tanggal Berlaku')
-                        //     ->required()
-                        //     ->default(now()->format('Y-m-d'))
-                        //     ->columnSpan(1),
-
                         Forms\Components\CheckboxList::make('tipe_layanan')
                             ->label('Tipe Layanan')
                             ->options([
@@ -139,12 +126,6 @@ class LayananResource extends Resource
     {
         return $table
             ->columns([
-                // Tables\Columns\ImageColumn::make('gambar')
-                //     ->label('Gambar')
-                //     ->square()
-                //     ->size(50)
-                //     ->toggleable(),
-
                 Tables\Columns\TextColumn::make('nama')
                     ->label('Nama Layanan')
                     ->searchable()
@@ -157,11 +138,6 @@ class LayananResource extends Resource
                     ->money('IDR')
                     ->sortable()
                     ->toggleable(),
-
-                // Tables\Columns\TextColumn::make('durasi')
-                //     ->label('Durasi')
-                //     ->formatStateUsing(fn($state): string => $state ? $state . ' menit' : '-')
-                    // ->toggleable(),
 
                 Tables\Columns\TagsColumn::make('tipe_layanan')
                     ->label('Tipe Layanan')
@@ -189,16 +165,37 @@ class LayananResource extends Resource
                     ->falseColor('gray')
                     ->toggleable(),
 
+                // Kolom untuk menampilkan tanggal dan jam yang tersedia dari tabel slots
+                Tables\Columns\TextColumn::make('slots.tanggal')
+                    ->label('Tanggal Tersedia')
+                    ->formatStateUsing(function (Layanan $record) {
+                        $slots = $record->slots;
+                        if ($slots->isEmpty()) {
+                            return 'Tidak ada slot';
+                        }
+
+                        // Group slots by date
+                        $groupedSlots = $slots->groupBy('tanggal');
+
+                        $result = [];
+                        foreach ($groupedSlots as $date => $dateSlots) {
+                            $times = $dateSlots->pluck('jam')->map(function ($time) {
+                                return Carbon::parse($time)->format('H:i');
+                            })->sort()->implode(', ');
+
+                            $formattedDate = Carbon::parse($date)->format('d M Y');
+                            $result[] = "{$formattedDate} ({$times})";
+                        }
+
+                        return implode('; ', $result);
+                    })
+                    ->wrap()
+                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make('slots_count')
                     ->label('Jumlah Slot')
                     ->counts('slots')
                     ->toggleable(),
-
-                // Tables\Columns\TextColumn::make('total_dipesan')
-                //     ->label('Total Dipesan')
-                //     ->numeric()
-                //     ->sortable()
-                //     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('tanggal')
                     ->label('Tanggal Berlaku')
@@ -224,24 +221,33 @@ class LayananResource extends Resource
                 Tables\Filters\TernaryFilter::make('is_promo')
                     ->label('Status Promo'),
 
-                Tables\Filters\Filter::make('tanggal_berlaku')
-                    ->form([
-                        Forms\Components\DatePicker::make('tanggal_dari')
-                            ->label('Dari Tanggal'),
-                        Forms\Components\DatePicker::make('tanggal_sampai')
-                            ->label('Sampai Tanggal'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['tanggal_dari'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('tanggal', '>=', $date),
-                            )
-                            ->when(
-                                $data['tanggal_sampai'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('tanggal', '<=', $date),
-                            );
-                    }),
+                // Tables\Filters\Filter::make('tanggal_berlaku')
+                //     ->form([
+                //         Forms\Components\DatePicker::make('tanggal_dari')
+                //             ->label('Dari Tanggal'),
+                //         Forms\Components\DatePicker::make('tanggal_sampai')
+                //             ->label('Sampai Tanggal'),
+                //     ])
+                //     ->query(function (Builder $query, array $data): Builder {
+                //         return $query
+                //             ->when(
+                //                 $data['tanggal_dari'],
+                //                 fn(Builder $query, $date): Builder => $query->whereDate('tanggal', '>=', $date),
+                //             )
+                //             ->when(
+                //                 $data['tanggal_sampai'],
+                //                 fn(Builder $query, $date): Builder => $query->whereDate('tanggal', '<=', $date),
+                //             );
+                //     }),
+
+                // Filter berdasarkan slot yang tersedia
+                Tables\Filters\Filter::make('has_slots')
+                    ->label('Memiliki Slot')
+                    ->query(fn(Builder $query): Builder => $query->has('slots')),
+
+                Tables\Filters\Filter::make('no_slots')
+                    ->label('Tidak Ada Slot')
+                    ->query(fn(Builder $query): Builder => $query->doesntHave('slots')),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
