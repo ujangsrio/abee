@@ -50,23 +50,23 @@ class LayananResource extends Resource
                             ->prefix('Rp')
                             ->columnSpan(1),
 
-                        Forms\Components\TextInput::make('durasi')
-                            ->label('Durasi (menit)')
-                            ->numeric()
-                            ->minValue(1)
-                            ->default(60)
-                            ->suffix('menit')
-                            ->columnSpan(1),
+                        // Forms\Components\TextInput::make('durasi')
+                        //     ->label('Durasi (menit)')
+                        //     ->numeric()
+                        //     ->minValue(1)
+                        //     ->default(60)
+                        //     ->suffix('menit')
+                        //     ->columnSpan(1),
                     ])
                     ->columns(2),
 
                 Forms\Components\Section::make('Pengaturan Layanan')
                     ->schema([
-                        Forms\Components\DatePicker::make('tanggal')
-                            ->label('Tanggal Berlaku')
-                            ->required()
-                            ->default(now()->format('Y-m-d'))
-                            ->columnSpan(1),
+                        // Forms\Components\DatePicker::make('tanggal')
+                        //     ->label('Tanggal Berlaku')
+                        //     ->required()
+                        //     ->default(now()->format('Y-m-d'))
+                        //     ->columnSpan(1),
 
                         Forms\Components\CheckboxList::make('tipe_layanan')
                             ->label('Tipe Layanan')
@@ -158,10 +158,10 @@ class LayananResource extends Resource
                     ->sortable()
                     ->toggleable(),
 
-                Tables\Columns\TextColumn::make('durasi')
-                    ->label('Durasi')
-                    ->formatStateUsing(fn($state): string => $state ? $state . ' menit' : '-')
-                    ->toggleable(),
+                // Tables\Columns\TextColumn::make('durasi')
+                //     ->label('Durasi')
+                //     ->formatStateUsing(fn($state): string => $state ? $state . ' menit' : '-')
+                    // ->toggleable(),
 
                 Tables\Columns\TagsColumn::make('tipe_layanan')
                     ->label('Tipe Layanan')
