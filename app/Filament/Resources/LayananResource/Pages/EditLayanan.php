@@ -5,6 +5,7 @@ namespace App\Filament\Resources\LayananResource\Pages;
 use App\Filament\Resources\LayananResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use App\Models\Layanan;
 
 class EditLayanan extends EditRecord
 {
@@ -14,6 +15,17 @@ class EditLayanan extends EditRecord
     {
         return [
             Actions\DeleteAction::make(),
+            Actions\ForceDeleteAction::make(),
+            Actions\RestoreAction::make(),
         ];
+    }
+
+    protected function afterSave(): void
+    {
+        /** @var Layanan $layanan */
+        $layanan = $this->record;
+
+        // Auto create/update slot utama
+        $layanan->autoCreateOrUpdateSlot();
     }
 }

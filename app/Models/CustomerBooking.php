@@ -23,13 +23,16 @@ class CustomerBooking extends Model
     protected $casts = [
         'tipe_layanan' => 'array',
         'variasi' => 'array',
-        'date' => 'date'
+        'date' => 'date',
+        'bukti_transfer' => 'string',
     ];
 
     public function layanan()
     {
         return $this->belongsTo(Layanan::class, 'service_id');
     }
+
+
 
     // Relasi ke model Layanan
     public function service()

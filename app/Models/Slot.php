@@ -17,6 +17,7 @@ class Slot extends Model
 
     protected $casts = [
         'tanggal' => 'date:Y-m-d',
+        // 'jam' bisa biarkan default (string)
     ];
 
     public function layanan()

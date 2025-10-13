@@ -70,16 +70,16 @@ class MembershipResource extends Resource
                 Tables\Columns\TextColumn::make('index')
                     ->label('No.')
                     ->rowIndex(),
-                    // ->sortable(false),
+                // ->sortable(false),
 
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nama')
                     ->searchable(),
-                    // ->sortable(),
+                // ->sortable(),
 
                 Tables\Columns\TextColumn::make('whatsapp')
                     ->label('No. WhatsApp'),
-                    // ->searchable(),
+                // ->searchable(),
 
                 Tables\Columns\TextColumn::make('member_code')
                     ->label('Kode Membership')
@@ -90,8 +90,9 @@ class MembershipResource extends Resource
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Tanggal Daftar')
-                    ->date('d M Y'),
-                    // ->sortable(),
+                    ->date('d-m-y'),
+                // ->date('d M Y'),
+                // ->sortable(),
 
                 // Tables\Columns\TextColumn::make('expired_at')
                 //     ->label('Tanggal Expired')

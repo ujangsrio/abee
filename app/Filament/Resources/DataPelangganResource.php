@@ -94,7 +94,7 @@ class DataPelangganResource extends Resource
                 Tables\Columns\TextColumn::make('index')
                     ->label('No.')
                     ->rowIndex(),
-                    // ->sortable(false),
+                // ->sortable(false),
 
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nama')
@@ -136,7 +136,8 @@ class DataPelangganResource extends Resource
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Tanggal Daftar')
-                    ->dateTime('d M Y')
+                    // ->dateTime('d M Y')
+                    ->date('d-m-y')
                     // ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
             ])
