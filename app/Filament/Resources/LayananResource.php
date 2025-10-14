@@ -11,128 +11,97 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Carbon;
 
 class LayananResource extends Resource
 {
     protected static ?string $model = Layanan::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-sparkles';
-
     protected static ?string $navigationLabel = 'Manajemen Layanan';
-
     protected static ?string $modelLabel = 'Layanan';
-
     protected static ?string $pluralModelLabel = 'Manajemen Layanan';
+
+    // protected static ?string $navigationGroup = 'Manajemen';
+    protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make('Informasi Layanan')
-                    ->schema([
-                        Forms\Components\TextInput::make('nama')
-                            ->label('Nama Layanan')
-                            ->required()
-                            ->maxLength(255)
-                            ->columnSpanFull(),
+        return $form->schema([
+            Forms\Components\Section::make('Data Layanan')
+                ->schema([
+                    Forms\Components\TextInput::make('nama')
+                        ->label('Nama Layanan')
+                        ->required()
+                        ->maxLength(255)
+                        ->columnSpanFull(),
 
-                        Forms\Components\Textarea::make('deskripsi')
-                            ->label('Deskripsi')
-                            ->maxLength(255)
-                            ->rows(3)
-                            ->columnSpanFull(),
+                    Forms\Components\Textarea::make('deskripsi')
+                        ->label('Deskripsi')
+                        ->maxLength(255)
+                        ->rows(3)
+                        ->columnSpanFull(),
 
-                        Forms\Components\TextInput::make('harga')
-                            ->label('Harga (Rp)')
-                            ->required()
-                            ->numeric()
-                            ->minValue(0)
-                            ->prefix('Rp')
-                            ->columnSpan(1),
+                    Forms\Components\TextInput::make('harga')
+                        ->label('Harga (Rp)')
+                        ->numeric()
+                        ->required()
+                        ->minValue(0)
+                        ->prefix('Rp')
+                        ->columnSpan(1),
 
-                        Forms\Components\TextInput::make('durasi')
-                            ->label('Durasi (menit)')
-                            ->numeric()
-                            ->minValue(1)
-                            ->default(60)
-                            ->suffix('menit')
-                            ->columnSpan(1),
-                    ])
-                    ->columns(2),
+                    Forms\Components\Toggle::make('is_promo')
+                        ->label('Promo Aktif?')
+                        ->default(false)
+                        ->helperText('Centang jika layanan ini sedang promo')
+                        ->columnSpan(1),
 
-                Forms\Components\Section::make('Pengaturan Layanan')
-                    ->schema([
-                        Forms\Components\DatePicker::make('tanggal')
-                            ->label('Tanggal Berlaku')
-                            ->required()
-                            ->default(now()->format('Y-m-d'))
-                            ->columnSpan(1),
+                    Forms\Components\FileUpload::make('gambar')
+                        ->label('Gambar Layanan')
+                        ->image()
+                        ->directory('photos')
+                        ->maxSize(2048)
+                        ->imageResizeMode('cover')
+                        ->imageCropAspectRatio('16:9')
+                        ->imageResizeTargetWidth('800')
+                        ->imageResizeTargetHeight('450')
+                        ->columnSpanFull(),
+                ])->columns(2),
 
-                        Forms\Components\CheckboxList::make('tipe_layanan')
-                            ->label('Tipe Layanan')
-                            ->options([
-                                'studio' => 'Studio',
-                                'home_service' => 'Home Service',
-                            ])
-                            ->default(['studio', 'home_service'])
-                            ->columns(2)
-                            ->columnSpan(1),
+            Forms\Components\Section::make('Tipe Layanan')
+                ->schema([
+                    Forms\Components\CheckboxList::make('tipe_layanan')
+                        ->label('Tipe Layanan yang Tersedia')
+                        ->options([
+                            'studio' => 'Studio',
+                            'home_service' => 'Home Service',
+                        ])
+                        ->default(['studio', 'home_service'])
+                        ->columns(2)
+                        ->helperText('Pilih tipe layanan yang tersedia untuk layanan ini')
+                        ->columnSpanFull(),
+                ]),
 
-                        Forms\Components\Toggle::make('is_promo')
-                            ->label('Promo Aktif?')
-                            ->default(false)
-                            ->columnSpanFull(),
+            Forms\Components\Section::make('Jadwal Layanan')
+                ->description('Atur tanggal dan jam utama untuk layanan ini')
+                ->schema([
+                    Forms\Components\DatePicker::make('tanggal')
+                        ->label('Tanggal Tersedia')
+                        ->required()
+                        ->default(now()->format('Y-m-d'))
+                        ->minDate(today())
+                        ->helperText('Pilih tanggal ketika layanan ini tersedia')
+                        ->columnSpan(1),
 
-                        Forms\Components\FileUpload::make('gambar')
-                            ->label('Gambar Layanan')
-                            ->image()
-                            ->directory('photos')
-                            ->maxSize(2048)
-                            ->imageResizeMode('cover')
-                            ->imageCropAspectRatio('16:9')
-                            ->imageResizeTargetWidth('800')
-                            ->imageResizeTargetHeight('450')
-                            ->columnSpanFull(),
-                    ])
-                    ->columns(2),
+                    Forms\Components\TimePicker::make('jam')
+                        ->label('Jam Utama')
+                        ->seconds(false)
+                        ->default(now()->format('H:i'))
+                        ->helperText('Jam utama untuk layanan ini')
+                        ->columnSpan(1),
+                ])
+                ->columns(2),
 
-                Forms\Components\Section::make('Slot Waktu')
-                    ->description('Atur slot waktu yang tersedia untuk layanan ini')
-                    ->schema([
-                        Forms\Components\Repeater::make('slots')
-                            ->label('Daftar Slot')
-                            ->relationship('slots')
-                            ->schema([
-                                Forms\Components\Grid::make(2)
-                                    ->schema([
-                                        Forms\Components\DatePicker::make('tanggal')
-                                            ->label('Tanggal Slot')
-                                            ->required()
-                                            ->default(now()->format('Y-m-d')),
-
-                                        Forms\Components\TimePicker::make('jam')
-                                            ->label('Jam Slot')
-                                            ->required()
-                                            ->seconds(false)
-                                            ->default(now()->format('H:i')),
-                                    ]),
-                            ])
-                            ->defaultItems(0)
-                            ->collapsible()
-                            ->reorderable()
-                            ->addActionLabel('Tambah Slot')
-                            ->minItems(0)
-                            ->itemLabel(
-                                fn(array $state): ?string =>
-                                $state['tanggal'] && $state['jam']
-                                    ? "Slot: {$state['tanggal']} {$state['jam']}"
-                                    : null
-                            ),
-                    ])
-                    ->collapsible()
-                    ->collapsed(fn($operation) => $operation === 'edit'),
-
-            ]);
+        ]);
     }
 
     public static function table(Table $table): Table
@@ -158,9 +127,17 @@ class LayananResource extends Resource
                     ->sortable()
                     ->toggleable(),
 
-                Tables\Columns\TextColumn::make('durasi')
-                    ->label('Durasi')
-                    ->formatStateUsing(fn($state): string => $state ? $state . ' menit' : '-')
+                Tables\Columns\TextColumn::make('tanggal')
+                    ->label('Tanggal')
+                    // ->date('d M Y')
+                    ->date('d-m-y')
+                    ->sortable()
+                    ->toggleable(),
+
+                Tables\Columns\TextColumn::make('jam')
+                    ->label('Jam')
+                    ->time('H:i')
+                    ->sortable()
                     ->toggleable(),
 
                 Tables\Columns\TagsColumn::make('tipe_layanan')
@@ -183,32 +160,18 @@ class LayananResource extends Resource
                 Tables\Columns\IconColumn::make('is_promo')
                     ->label('Promo')
                     ->boolean()
-                    ->trueIcon('heroicon-o-check-badge')
-                    ->falseIcon('heroicon-o-x-mark')
-                    ->trueColor('success')
-                    ->falseColor('gray')
                     ->toggleable(),
 
-                Tables\Columns\TextColumn::make('slots_count')
-                    ->label('Jumlah Slot')
-                    ->counts('slots')
-                    ->toggleable(),
-
-                // Tables\Columns\TextColumn::make('total_dipesan')
-                //     ->label('Total Dipesan')
-                //     ->numeric()
-                //     ->sortable()
-                //     ->toggleable(),
-
-                Tables\Columns\TextColumn::make('tanggal')
-                    ->label('Tanggal Berlaku')
-                    ->date('d M Y')
+                Tables\Columns\TextColumn::make('total_dipesan')
+                    ->label('Total Dipesan')
+                    ->numeric()
                     ->sortable()
                     ->toggleable(),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
-                    ->dateTime('d M Y H:i')
+                    // ->dateTime('d M Y H:i')
+                    ->date('d-m-y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -225,6 +188,7 @@ class LayananResource extends Resource
                     ->label('Status Promo'),
 
                 Tables\Filters\Filter::make('tanggal_berlaku')
+                    ->label('Tanggal Tersedia')
                     ->form([
                         Forms\Components\DatePicker::make('tanggal_dari')
                             ->label('Dari Tanggal'),
@@ -242,17 +206,20 @@ class LayananResource extends Resource
                                 fn(Builder $query, $date): Builder => $query->whereDate('tanggal', '<=', $date),
                             );
                     }),
+
+                Tables\Filters\TrashedFilter::make(),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
-                    ->iconButton(),
-
-                Tables\Actions\DeleteAction::make()
-                    ->iconButton(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\ForceDeleteAction::make(),
+                Tables\Actions\RestoreAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\ForceDeleteBulkAction::make(),
+                    Tables\Actions\RestoreBulkAction::make(),
                 ]),
             ])
             ->emptyStateActions([
@@ -263,9 +230,7 @@ class LayananResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            // Tidak ada relations untuk sekarang
-        ];
+        return [];
     }
 
     public static function getPages(): array
@@ -277,12 +242,20 @@ class LayananResource extends Resource
         ];
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->withoutGlobalScopes([
+                SoftDeletingScope::class,
+            ]);
+    }
+
     public static function getNavigationBadge(): ?string
     {
         return static::getModel()::count();
     }
 
-    public static function getNavigationBadgeColor(): ?string
+    public static function getNavigationBadgeColor(): string|array|null
     {
         return 'success';
     }

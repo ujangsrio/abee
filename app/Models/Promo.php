@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Promo extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'nama_promo',
@@ -19,20 +19,11 @@ class Promo extends Model
     ];
 
     protected $casts = [
-        'hanya_member' => 'boolean',
-        'tanggal_berakhir' => 'date',
+        'tanggal_berakhir' => 'date:Y-m-d',
     ];
 
-    public function layanans(): HasMany
+    public function layanans()
     {
-        return $this->hasMany(Layanan::class);
+        return $this->hasMany(Layanan::class, 'promo_id');
     }
-
-    // public function layanan()
-    // {
-    //     return $this->hasOne(Layanan::class, 'promo_id');
-        
-    // }
-
-
 }

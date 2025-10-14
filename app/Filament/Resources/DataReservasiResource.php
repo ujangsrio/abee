@@ -14,6 +14,9 @@ use Filament\Tables\Table;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Storage;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Forms\Components\FileUpload;
+use Filament\Tables\Columns\ViewColumn;
 
 class DataReservasiResource extends Resource
 {
@@ -119,17 +122,15 @@ class DataReservasiResource extends Resource
                             ])
                             ->default('Belum')
                             ->required(),
-                        Forms\Components\FileUpload::make('bukti_transfer')
+                        FileUpload::make('bukti_transfer')
                             ->label('Bukti Transfer')
+                            ->image()
                             ->directory('bukti')
                             ->disk('public')
-                            ->image()
-                            ->maxSize(2048)
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg'])
-                            ->downloadable()
-                            ->openable()
-                            ->previewable(true)
-                            ->helperText('Format: JPG, JPEG, PNG. Maksimal 2MB.'),
+                            ->visibility('public')
+                            // ->enableOpen()
+                            // ->enableDownload()
+                            ->maxSize(2048),
                     ])->columns(2),
             ]);
     }
@@ -201,24 +202,32 @@ class DataReservasiResource extends Resource
 
                 Tables\Columns\TextColumn::make('date')
                     ->label('Tanggal')
-                    ->date('d/m/Y')
+                    // ->date('d/m/Y')
+                    ->date('d-m-y')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('time')
                     ->label('Jam')
                     ->sortable(),
-                Tables\Columns\ImageColumn::make('bukti_transfer')
+                ImageColumn::make('bukti_transfer')
                     ->label('Bukti Transfer')
                     ->disk('public')
-                    ->size(60)
+                    ->visibility('public')
                     ->square()
-                    ->defaultImageUrl(url('/images/default-bukti.png')) // Fallback image
+                    ->height(70)
+
+                    // ->enableOpen()
+                    ->openUrlInNewTab()
+                    ->getStateUsing(
+                        fn($record) =>
+                        $record->bukti_transfer
+                            ? 'bukti/' . basename($record->bukti_transfer)
+                            : null
+                    )
+                    ->defaultImageUrl(asset('images/no-image.png'))
                     ->extraImgAttributes([
-                        'class' => 'rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer',
-                        'alt' => 'Bukti Transfer',
-                        'onclick' => 'openImage(this.src)' // JavaScript untuk open image
-                    ])
-                    ->placeholder('Tidak ada bukti')
-                    ->grow(false),
+                        'class' => 'rounded-md shadow hover:scale-105 transition-transform duration-200 cursor-pointer',
+                    ]),
+
                 Tables\Columns\TextColumn::make('tipe_pembayaran')
                     ->label('Tipe Bayar')
                     ->badge()
@@ -250,11 +259,12 @@ class DataReservasiResource extends Resource
                         'Selesai' => 'info',
                         default => 'gray',
                     }),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Dibuat')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                // Tables\Columns\TextColumn::make('created_at')
+                //     ->label('Dibuat')
+                //     // ->dateTime('d/m/Y H:i')
+                //     ->date('d-m-y')
+                //     ->sortable()
+                //     ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -299,7 +309,16 @@ class DataReservasiResource extends Resource
                             ->danger()
                             ->send();
                     })
-                    ->openUrlInNewTab(),
+                    // ->modalActions([
+                    //     Tables\Actions\Action::make('close')
+                    //         ->label('Tutup')
+                    //         ->color('secondary'),
+                    // ])
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Tutup')
+                    ->modalWidth('2xl'),
+
+
                 Tables\Actions\Action::make('confirmDp')
                     ->label('Konfirmasi DP')
                     ->icon('heroicon-o-check-circle')

@@ -34,7 +34,7 @@ class LaporanKeuanganResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Data Laba Rugi')
+                Forms\Components\Section::make('Data Keuangan')
                     ->schema([
                         Forms\Components\Select::make('kategori')
                             ->label('Kategori')

@@ -21,7 +21,7 @@ class ListLaporanKeuangans extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Tambah Data Laba Rugi')
+                ->label('Tambah Data')
                 ->icon('heroicon-o-plus'),
 
             // Export Action dengan Modal Form

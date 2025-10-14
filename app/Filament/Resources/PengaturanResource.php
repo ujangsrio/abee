@@ -129,7 +129,8 @@ class PengaturanResource extends Resource
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
-                    ->dateTime('d M Y')
+                    // ->dateTime('d M Y')
+                    ->date('d-m-y')
                     ->sortable(),
             ])
             ->filters([

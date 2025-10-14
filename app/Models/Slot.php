@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Slot extends Model
 {
@@ -17,12 +16,12 @@ class Slot extends Model
     ];
 
     protected $casts = [
-        'tanggal' => 'date',
+        'tanggal' => 'date:Y-m-d',
+        // 'jam' bisa biarkan default (string)
     ];
 
-    public function layanan(): BelongsTo
+    public function layanan()
     {
-        return $this->belongsTo(Layanan::class);
+        return $this->belongsTo(Layanan::class, 'layanan_id');
     }
 }
-

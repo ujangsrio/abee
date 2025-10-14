@@ -27,7 +27,7 @@ class RingkasanKeuanganExport implements FromArray, WithHeadings, WithStyles, Wi
         return [
             ['PENDAPATAN', '', ''],
             ['Pendapatan dari Reservasi', 'Rp ' . number_format($ringkasan['pendapatan_reservasi'], 0, ',', '.'), ''],
-            ['Pendapatan Manual', 'Rp ' . number_format($ringkasan['pendapatan_manual'], 0, ',', '.'), ''],
+            ['Pendapatan Reservasi Offline', 'Rp ' . number_format($ringkasan['pendapatan_manual'], 0, ',', '.'), ''],
             ['Total Pendapatan', 'Rp ' . number_format($ringkasan['total_pendapatan'], 0, ',', '.'), ''],
             ['', '', ''],
             ['PENGELUARAN', '', ''],
@@ -44,7 +44,7 @@ class RingkasanKeuanganExport implements FromArray, WithHeadings, WithStyles, Wi
             : 'Semua Periode';
 
         return [
-            ['LAPORAN RINGKASAN KEUANGAN - ARETHA BEAUTY'],
+            ['LAPORAN KEUANGAN - ARETHA BEAUTY'],
             [$periode],
             [''],
             ['KETERANGAN', 'JUMLAH', 'STATUS']

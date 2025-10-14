@@ -93,12 +93,12 @@ class MultiAuthController extends Controller
             'photo' => null,
         ]);
 
-        // ✅ Simpan juga ke tabel `pelanggans`
-        \App\Models\Pelanggan::create([
-            'name' => $user->name,
-            'email' => $user->email,
-            'whatsapp' => $request->whatsapp,
-        ]);
+        // // ✅ Simpan juga ke tabel `pelanggans`
+        // \App\Models\Pelanggan::create([
+        //     'name' => $user->name,
+        //     'email' => $user->email,
+        //     'whatsapp' => $request->whatsapp,
+        // ]);
 
         // Login langsung
         Auth::guard('customer')->login($user);
