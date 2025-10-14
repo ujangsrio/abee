@@ -402,6 +402,10 @@ class Reader
             ) {
                 $this->reader->setLoadSheetsOnly(array_keys($sheetImports));
             }
+
+            if (method_exists($this->reader, 'setCreateBlankSheetIfNoneRead')) {
+                $this->reader->setCreateBlankSheetIfNoneRead(true);
+            }
         }
 
         return $sheetImports;

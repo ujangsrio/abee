@@ -21,7 +21,7 @@ class LayananResource extends Resource
     protected static ?string $modelLabel = 'Layanan';
     protected static ?string $pluralModelLabel = 'Manajemen Layanan';
 
-    // protected static ?string $navigationGroup = 'Manajemen';
+    protected static ?string $navigationGroup = 'Manajemen';
     protected static ?int $navigationSort = 1;
 
     public static function form(Form $form): Form

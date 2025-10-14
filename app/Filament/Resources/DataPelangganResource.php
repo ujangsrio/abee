@@ -22,6 +22,7 @@ class DataPelangganResource extends Resource
     protected static ?string $modelLabel = 'Pelanggan';
 
     protected static ?string $pluralModelLabel = 'Data Pelanggan';
+    protected static ?string $navigationGroup = 'Pelanggan';
 
     public static function canCreate(): bool
     {

@@ -29,6 +29,7 @@ class DataReservasiResource extends Resource
     protected static ?string $modelLabel = 'Manajemen Reservasi';
 
     protected static ?string $pluralModelLabel = 'Manajemen Reservasi';
+    protected static ?string $navigationGroup = 'Manajemen';
 
     public static function canCreate(): bool
     {
