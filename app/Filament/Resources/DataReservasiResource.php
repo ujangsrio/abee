@@ -282,16 +282,16 @@ class DataReservasiResource extends Resource
                     ->relationship('service', 'nama'),
             ])
             ->actions([
-                Tables\Actions\Action::make('viewBukti')
+                 Tables\Actions\Action::make('viewBukti')
                     ->label('Lihat Bukti')
                     ->icon('heroicon-o-eye')
                     ->color('info')
                     ->visible(fn(CustomerBooking $record) => !empty($record->bukti_transfer))
                     ->action(function (CustomerBooking $record) {
                         if ($record->bukti_transfer && Storage::disk('public')->exists($record->bukti_transfer)) {
-                            // Return URL untuk dibuka di tab baru
-                            $url = Storage::disk('public');
-                            return redirect($url);
+                            // Ambil URL publik dari file di storage
+                            $url = Storage::disk('public')->url($record->bukti_transfer);
+                            return redirect()->away($url); // arahkan ke tab baru
                         }
 
                         Notification::make()
