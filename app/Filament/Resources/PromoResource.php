@@ -20,7 +20,7 @@ class PromoResource extends Resource
     protected static ?string $navigationLabel = 'Manajemen Promo';
     protected static ?string $modelLabel = 'Promo';
     protected static ?string $pluralModelLabel = 'Manajemen Promo';
-    // protected static ?string $navigationGroup = 'Manajemen';
+    protected static ?string $navigationGroup = 'Manajemen';
     protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form

@@ -49,17 +49,28 @@
 
           <div class="font-medium">Tipe Layanan:</div>
           <div>
-            <?php if(is_array($booking->tipe_layanan)): ?>
-              <?php $__currentLoopData = $booking->tipe_layanan; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tipe): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                <span class="inline-block text-xs px-2 py-1 rounded 
-                  <?php echo e($tipe === 'home_service' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'); ?> mr-1 mb-1">
-                  <?php echo e($tipe === 'home_service' ? 'Home Service' : 'Studio'); ?>
+            <?php
+              // Fix untuk menangani data tipe_layanan yang berupa array JSON
+              $tipeLayanan = $booking->tipe_layanan;
+              
+              // Jika tipe_layanan adalah string JSON, decode dulu
+              if (is_string($tipeLayanan) && json_decode($tipeLayanan)) {
+                  $tipeLayanan = json_decode($tipeLayanan, true);
+              }
+              
+              // Jika masih array, ambil nilai pertama
+              if (is_array($tipeLayanan) && count($tipeLayanan) > 0) {
+                  $tipe = $tipeLayanan[0];
+              } else {
+                  $tipe = $tipeLayanan;
+              }
+            ?>
 
-                </span>
-              <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-            <?php else: ?>
-              <span class="text-gray-500 italic">Tidak tersedia</span>
-            <?php endif; ?>
+            <span class="inline-block text-xs px-2 py-1 rounded 
+              <?php echo e($tipe === 'home_service' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'); ?>">
+              <?php echo e($tipe === 'home_service' ? 'Home Service' : 'Studio'); ?>
+
+            </span>
           </div>
 
           <div class="font-medium">Status Reservasi:</div>

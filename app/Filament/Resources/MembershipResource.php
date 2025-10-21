@@ -21,6 +21,8 @@ class MembershipResource extends Resource
 
     protected static ?string $modelLabel = 'Data Membership';
 
+    protected static ?string $navigationGroup = 'Pelanggan';
+
 
     public static function canCreate(): bool
     {
