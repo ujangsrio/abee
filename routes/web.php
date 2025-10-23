@@ -111,18 +111,19 @@ Route::middleware(['web', 'auth:customer', IsCustomer::class])
     ->prefix('customer')
     ->name('customer.')
     ->group(function () {
-        // Route::get('/booking', function () {
-        //     return 'Halaman booking belum dibuat';
-        // })->name('booking');
         Route::get('/dashboard', [CustomerDashboardController::class, 'dashboard'])->name('dashboard');
-        // Route::get('/reservasiaktif', [BookingController::class, 'reservasiaktif'])->name('reservasiaktif');
         Route::get('/reservasiaktif', [BookingController::class, 'reservasiaktif'])->name('reservasiaktif');
         Route::get('/layanan', [CustomerDashboardController::class, 'layanan'])->name('layanan');
         Route::get('/kontak', [CustomerDashboardController::class, 'kontak'])->name('kontak');
         Route::get('/cari', [CustomerDashboardController::class, 'cari'])->name('cari');
+        
+        // --- Perubahan di Sini ---
         Route::get('/profil', [CustomerProfileController::class, 'index'])->name('profil');
+        // Route ini yang akan digunakan untuk UPDATE PROFIL
         Route::put('/profil', [CustomerProfileController::class, 'update'])->name('profil.update');
-        Route::patch('/profil/{id}', [CustomerProfileController::class, 'update'])->name('profil.update');
+        // Route ini dihapus karena konflik dengan PUT di atas dan tidak diperlukan
+        // Route::patch('/profil/{id}', [CustomerProfileController::class, 'update'])->name('profil.update');
+        
         Route::put('/profil/password', [CustomerProfileController::class, 'updatePassword'])->name('profil.updatePassword');
         Route::get('/logout', [CustomerDashboardController::class, 'logout'])->name('logout');
         Route::get('/booking', [BookingController::class, 'create'])->name('booking.create');
