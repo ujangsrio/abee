@@ -43,7 +43,8 @@ class PengaturanResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->label('Nama Lengkap')
                             ->required()
-                            ->maxLength(255)
+                            ->minLength(5) // ⬅️ PERBAIKAN: Minimal 5 karakter
+                            ->maxLength(50) // ⬅️ PERBAIKAN: Maksimal 50 karakter
                             ->placeholder('Masukkan nama lengkap admin'),
 
                         Forms\Components\TextInput::make('email')
@@ -98,7 +99,8 @@ class PengaturanResource extends Resource
 
                         Forms\Components\Placeholder::make('updated_at')
                             ->label('Terakhir Diupdate')
-                            ->content(fn($record) => $record?->updated_at?->format('d M Y, H:i')),
+                            // ⬅️ PERBAIKAN: Menambahkan 'H:i' untuk menampilkan jam
+                            ->content(fn($record) => $record?->updated_at?->format('d M Y, H:i')), 
                     ])
                     ->columns(2)
                     ->visible(fn($record) => $record !== null),
@@ -129,8 +131,13 @@ class PengaturanResource extends Resource
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
-                    // ->dateTime('d M Y')
                     ->date('d-m-y')
+                    ->sortable(),
+                
+                // ⬅️ PERBAIKAN: Menambahkan kolom updated_at dengan format tanggal dan waktu
+                Tables\Columns\TextColumn::make('updated_at') 
+                    ->label('Diupdate')
+                    ->dateTime('d-m-y, H:i') 
                     ->sortable(),
             ])
             ->filters([
