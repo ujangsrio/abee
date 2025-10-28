@@ -25,7 +25,8 @@ class EditLayanan extends EditRecord
         /** @var Layanan $layanan */
         $layanan = $this->record;
 
-        // Auto create/update slot utama
-        $layanan->autoCreateOrUpdateSlot();
+        // Panggilan $layanan->autoCreateOrUpdateSlot() telah dihapus di sini 
+        // karena logika lama tersebut sudah tidak digunakan dan menyebabkan error.
+        // Logika jadwal sekarang dihandle oleh recurring_schedule dan exception_schedule.
     }
 }
