@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo; // <-- PENTING: Import untuk BelongsTo
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Layanan extends Model
@@ -20,6 +21,7 @@ class Layanan extends Model
         'total_dipesan',
         'is_promo',
         'tipe_layanan',
+        'promo_id', // <-- PENTING: Harus ada di fillable agar Select field Filament dapat menyimpan data
     ];
 
     protected $casts = [
@@ -29,6 +31,16 @@ class Layanan extends Model
         'total_dipesan' => 'integer',
         'tanggal' => 'date',
     ];
+
+    /**
+     * Relasi belongsTo ke Promo.
+     * INI YANG HILANG DAN MENYEBABKAN KEDUA ERROR DI FILAMENT
+     */
+    public function promo(): BelongsTo
+    {
+        // Relasi ini menghubungkan layanan ke satu promo induk melalui kolom 'promo_id'
+        return $this->belongsTo(Promo::class, 'promo_id');
+    }
 
     public function slots()
     {

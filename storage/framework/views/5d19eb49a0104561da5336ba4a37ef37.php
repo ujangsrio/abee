@@ -19,13 +19,22 @@
         </div>
     <?php endif; ?>
 
+    
+    <?php if($errors->any()): ?>
+        <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative shadow-sm">
+            <strong class="font-bold">Gagal Reservasi!</strong>
+            <span class="block sm:inline">Harap periksa kembali input Anda di bawah.</span>
+        </div>
+    <?php endif; ?>
+
     <div class="max-w-4xl mx-auto bg-white border border-purple-100 shadow-sm rounded-sm p-6 space-y-5">
         <form method="POST" action="<?php echo e(route('customer.booking.store')); ?>" enctype="multipart/form-data" class="space-y-5">
             <?php echo csrf_field(); ?>
 
-            <input type="hidden" name="service_id" id="service_id">
-            <input type="hidden" name="tanggal" id="tanggal_hidden">
-            <input type="hidden" name="tipe_layanan" id="tipe_layanan"> 
+            <!-- Hidden Fields - Diisi oleh JS -->
+            <input type="hidden" name="service_id" id="service_id" value="<?php echo e(old('service_id')); ?>">
+            <input type="hidden" name="tanggal" id="tanggal_hidden" value="<?php echo e(old('tanggal')); ?>">
+            <input type="hidden" name="tipe_layanan" id="tipe_layanan" value="<?php echo e(old('tipe_layanan')); ?>">
 
             
             <div>
@@ -48,27 +57,73 @@
             
             <div>
                 <label for="layananSelect" class="block text-sm font-medium text-gray-700 mb-1">Pilih Layanan & Tanggal</label>
-                <select id="layananSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm" required>
+                <select id="layananSelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm <?php $__errorArgs = ['service_id'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> border-red-500 <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?> <?php $__errorArgs = ['tanggal'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> border-red-500 <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" required>
                     <option value="">-- Pilih Layanan --</option>
                     <?php $__currentLoopData = $tanggalJam; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tanggal => $jamList): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <?php $__currentLoopData = $jamList; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $layanan): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <?php
+                                $unique_key = $layanan->id . '_' . $tanggal;
+                                $old_key = old('service_id') . '_' . old('tanggal');
+                            ?>
                             <option 
                                 value="<?php echo e($layanan->id); ?>" 
                                 data-tanggal="<?php echo e($tanggal); ?>" 
-                                data-nama="<?php echo e($layanan->nama); ?>">
+                                data-nama="<?php echo e($layanan->nama); ?>"
+                                data-unique-key="<?php echo e($unique_key); ?>"
+                                <?php echo e($unique_key == $old_key ? 'selected' : ''); ?>>
                                 <?php echo e($layanan->nama); ?> - <?php echo e(\Carbon\Carbon::parse($tanggal)->format('d M Y')); ?>
 
                             </option>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                 </select>
+                <?php $__errorArgs = ['service_id'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="text-xs text-red-600 mt-1"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+                <?php $__errorArgs = ['tanggal'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="text-xs text-red-600 mt-1"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
             </div>
 
             
             <div>
                 <label for="timeSelect" class="block text-sm font-medium text-gray-700 mb-1">Jam Tersedia</label>
-                <select id="timeSelect" name="time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm" required>
+                <select id="timeSelect" name="time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm <?php $__errorArgs = ['time'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> border-red-500 <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>" required>
                     <option value="">-- Pilih waktu --</option>
+                    <?php if(old('time')): ?>
+                        <option value="<?php echo e(old('time')); ?>" selected><?php echo e(old('time')); ?> (Dipilih)</option>
+                    <?php endif; ?>
                 </select>
                 <?php $__errorArgs = ['time'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
@@ -92,6 +147,14 @@ unset($__errorArgs, $__bag); ?>
                         </div>
                     </div>
                 </div>
+                <?php $__errorArgs = ['tipe_layanan'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="text-xs text-red-600 mt-1"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
             </div>
 
             
@@ -99,20 +162,30 @@ unset($__errorArgs, $__bag); ?>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Opsi Pembayaran</label>
                 <div class="space-y-3">
                     <label class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
-                        <input type="radio" name="tipe_pembayaran" value="dp" class="mr-3" checked>
+                        <input type="radio" name="tipe_pembayaran" value="dp" class="mr-3" 
+                               <?php echo e(old('tipe_pembayaran', 'dp') == 'dp' ? 'checked' : ''); ?>>
                         <div>
                             <span class="text-sm font-medium">💳 DP (Down Payment)</span>
                             <p class="text-xs text-gray-600">Bayar DP Rp 50.000, sisa dibayar nanti</p>
                         </div>
                     </label>
                     <label class="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
-                        <input type="radio" name="tipe_pembayaran" value="full" class="mr-3">
+                        <input type="radio" name="tipe_pembayaran" value="full" class="mr-3"
+                               <?php echo e(old('tipe_pembayaran') == 'full' ? 'checked' : ''); ?>>
                         <div>
                             <span class="text-sm font-medium">💰 Langsung Lunas</span>
                             <p class="text-xs text-gray-600">Bayar total biaya sekarang juga</p>
                         </div>
                     </label>
                 </div>
+                <?php $__errorArgs = ['tipe_pembayaran'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <p class="text-xs text-red-600 mt-1"><?php echo e($message); ?></p> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
             </div>
             
             
@@ -168,7 +241,14 @@ unset($__errorArgs, $__bag); ?>
                     Upload Bukti Pembayaran <span class="text-red-500">*</span>
                 </label>
                 <input type="file" id="bukti_transfer" name="bukti_transfer" accept="image/jpeg,image/png,image/jpg"
-                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm">
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm <?php $__errorArgs = ['bukti_transfer'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> border-red-500 <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>">
                 <p class="text-xs text-gray-500 mt-1">Format: JPG, JPEG, PNG. Maksimal 2MB.</p>
                 <?php $__errorArgs = ['bukti_transfer'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
@@ -185,7 +265,8 @@ unset($__errorArgs, $__bag); ?>
                 <a href="<?php echo e(route('customer.layanan')); ?>" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm shadow transition">
                     ← Kembali
                 </a>
-                <button type="submit" id="submitBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-md text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                
+                <button type="submit" id="submitBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-md text-sm font-semibold transition hover:opacity-90">
                     <span id="submitText">Booking Sekarang</span>
                     <span id="loadingText" style="display: none;">Memproses...</span>
                 </button>
@@ -197,6 +278,11 @@ unset($__errorArgs, $__bag); ?>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
+    // FIX: Ambil nilai old() dari hidden field yang sudah dipopulasi oleh Blade
+    const oldServiceId = $('#service_id').val();
+    const oldTanggal = $('#tanggal_hidden').val();
+    const oldTime = "<?php echo e(old('time')); ?>"; 
+
     function formatRupiah(number) {
         return new Intl.NumberFormat('id-ID', {
             style: 'currency',
@@ -208,30 +294,45 @@ unset($__errorArgs, $__bag); ?>
     let availableTimes = [];
 
     $(document).ready(function () {
-        $('#layananSelect').on('change', function () {
-            const selected = $(this).find(':selected');
-            const serviceId = selected.val();
-            const tanggal = selected.data('tanggal');
 
-            $('#service_id').val(serviceId);
-            $('#tanggal_hidden').val(tanggal);
-
-            if (serviceId && tanggal) {
-                // Reset form sections
+        // --- Fungsi ini sekarang hanya berfungsi untuk menampilkan data, tidak lagi menonaktifkan tombol ---
+        function setFormDisplay(isVisible) {
+            if (isVisible) {
+                $('#serviceTypeOption').show();
+                $('#paymentOption').show();
+                $('#costBreakdown').show();
+                $('#paymentInfo').show();
+                $('#buktiTransferSection').show();
+            } else {
                 $('#serviceTypeOption').hide();
                 $('#paymentOption').hide();
                 $('#costBreakdown').hide();
                 $('#paymentInfo').hide();
                 $('#buktiTransferSection').hide();
-                $('#timeSelect').empty().append('<option value="">-- Memuat jam... --</option>');
+            }
+        }
+        // --------------------------------------------------------------------------------------------------
 
+        $('#layananSelect').on('change', function () {
+            const selected = $(this).find(':selected');
+            const serviceId = selected.val();
+            const tanggal = selected.data('tanggal');
+
+            // Update hidden fields
+            $('#service_id').val(serviceId);
+            $('#tanggal_hidden').val(tanggal);
+
+            if (serviceId && tanggal) {
+                setFormDisplay(false); // Sembunyikan saat memuat
+                $('#timeSelect').empty().append('<option value="">-- Memuat jam... --</option>');
+                
                 // Ambil jam tersedia
                 $.get('<?php echo e(route("customer.booking.availableTimes")); ?>', {
                     service_id: serviceId,
                     tanggal: tanggal
                 }, function (data) {
                     availableTimes = data.map(item => item.jam);
-                    renderTimeOptions();
+                    renderTimeOptions(oldTime); 
                     
                     if (availableTimes.length === 0) {
                         $('#timeSelect').html('<option value="" disabled>Tidak ada jam tersedia</option>');
@@ -260,37 +361,28 @@ unset($__errorArgs, $__bag); ?>
                         $('#discountRow').hide();
                     }
 
-                    // Handle service type
-                    let tipeLayanan = 'studio'; // default
-                    if (data.service_type && Array.isArray(data.service_type) && data.service_type.length > 0) {
-                        tipeLayanan = data.service_type[0];
-                    } else if (data.service_type && typeof data.service_type === 'string') {
+                    let tipeLayanan = 'studio'; 
+                    // Logika parsing JSON service_type (jika diperlukan)
+                    if (data.service_type && typeof data.service_type === 'string') {
                         try {
                             const parsed = JSON.parse(data.service_type);
                             tipeLayanan = Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : 'studio';
                         } catch (e) {
                             tipeLayanan = data.service_type;
                         }
+                    } else if (data.service_type && Array.isArray(data.service_type) && data.service_type.length > 0) {
+                        tipeLayanan = data.service_type[0];
                     }
                     
                     $('#tipe_layanan').val(tipeLayanan);
                     updateServiceTypeDisplay(tipeLayanan);
                     
-                    // Update payment display
                     updatePaymentDisplay();
-
-                    // Show sections
-                    $('#serviceTypeOption').show();
-                    $('#paymentOption').show();
-                    $('#costBreakdown').show();
-                    $('#paymentInfo').show();
-                    $('#buktiTransferSection').show();
-
-                    validateForm();
+                    setFormDisplay(true); // Tampilkan setelah data dimuat
 
                 }).fail(function() {
                     console.error('Failed to load cost data');
-                    alert('Gagal memuat informasi biaya. Silakan refresh halaman.');
+                    resetForm(); 
                 });
 
             } else {
@@ -298,21 +390,19 @@ unset($__errorArgs, $__bag); ?>
             }
         });
 
-        function renderTimeOptions() {
+        function renderTimeOptions(oldTimeValue = null) {
             const timeSelect = $('#timeSelect');
             timeSelect.empty().append('<option value="">-- Pilih waktu --</option>');
 
             if (availableTimes.length > 0) {
                 availableTimes.forEach(time => {
-                    timeSelect.append(`<option value="${time}">${time}</option>`);
+                    const isSelected = oldTimeValue && oldTimeValue === time ? 'selected' : '';
+                    timeSelect.append(`<option value="${time}" ${isSelected}>${time}</option>`);
                 });
             }
         }
 
-        $('input[name="tipe_pembayaran"]').on('change', function() {
-            updatePaymentDisplay();
-            validateForm();
-        });
+        $('input[name="tipe_pembayaran"]').on('change', updatePaymentDisplay);
 
         function updatePaymentDisplay() {
             if (!window.costData) return;
@@ -340,22 +430,8 @@ unset($__errorArgs, $__bag); ?>
 
         function updateServiceTypeDisplay(tipeLayanan) {
             const serviceTypeConfig = {
-                'studio': {
-                    icon: '🏢',
-                    name: 'Studio',
-                    desc: 'Datang ke Salon Kami',
-                    bgColor: 'bg-blue-50',
-                    borderColor: 'border-blue-200',
-                    textColor: 'text-blue-800'
-                },
-                'home_service': {
-                    icon: '🏠',
-                    name: 'Home Service',
-                    desc: 'Kami Datang ke Lokasi Anda',
-                    bgColor: 'bg-green-50',
-                    borderColor: 'border-green-200',
-                    textColor: 'text-green-800'
-                }
+                'studio': { icon: '🏢', name: 'Studio', desc: 'Datang ke Salon Kami', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', textColor: 'text-blue-800' },
+                'home_service': { icon: '🏠', name: 'Home Service', desc: 'Kami Datang ke Lokasi Anda', bgColor: 'bg-green-50', borderColor: 'border-green-200', textColor: 'text-green-800' }
             };
 
             const config = serviceTypeConfig[tipeLayanan] || {
@@ -375,47 +451,40 @@ unset($__errorArgs, $__bag); ?>
             $('#serviceTypeDesc').text(config.desc);
         }
 
-        function validateForm() {
-            const serviceId = $('#service_id').val();
-            const time = $('#timeSelect').val();
-            const buktiTransfer = $('#bukti_transfer')[0].files.length > 0;
-            
-            const isValid = serviceId && time && buktiTransfer;
-            $('#submitBtn').prop('disabled', !isValid);
-            return isValid;
-        }
-
         function resetForm() {
-            $('#serviceTypeOption').hide();
-            $('#paymentOption').hide();
-            $('#costBreakdown').hide();
-            $('#paymentInfo').hide();
-            $('#buktiTransferSection').hide();
+            setFormDisplay(false);
             $('#timeSelect').empty().append('<option value="">-- Pilih waktu --</option>');
-            $('#submitBtn').prop('disabled', true);
+            $('#service_id').val('');
+            $('#tanggal_hidden').val('');
+            $('#tipe_layanan').val('');
+            window.costData = null;
         }
-
-        // Check validation on form changes
-        $('#timeSelect, #bukti_transfer').on('change', validateForm);
 
         // Form submit handling
         $('form').on('submit', function(e) {
-            if (!validateForm()) {
-                e.preventDefault();
-                alert('Harap lengkapi semua field yang diperlukan.');
-                return false;
-            }
-            
+            // Kita tidak mencegah submit di sini agar Laravel dapat memproses validasi
+            // Cukup tampilkan loading state
             $('#submitBtn').prop('disabled', true);
             $('#submitText').hide();
             $('#loadingText').show();
             return true;
         });
 
-        // Initialize
-        resetForm();
+        // --- FIX INITIALIZATION (MENGEMBALIKAN NILAI LAMA) ---
+        if (oldServiceId && oldTanggal) {
+            const oldKey = oldServiceId + '_' + oldTanggal;
+            const oldOption = $('#layananSelect option[data-unique-key="' + oldKey + '"]');
+            
+            if (oldOption.length) {
+                $('#layananSelect').val(oldServiceId);
+                $('#layananSelect').trigger('change');
+            } else {
+                 resetForm();
+            }
+        } else {
+            resetForm();
+        }
     });
 </script>
 <?php $__env->stopSection(); ?>
-
 <?php echo $__env->make('customer.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Project Abee\abee\resources\views/customer/booking/create.blade.php ENDPATH**/ ?>

@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\LayananResource\Pages;
 use App\Models\Layanan;
+use App\Models\Promo;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -11,7 +12,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Carbon;
+// PERBAIKAN: Gunakan Illuminate\Support\Carbon untuk memastikan fungsi now() dikenali.
+use Illuminate\Support\Carbon; 
 
 class LayananResource extends Resource
 {
@@ -49,10 +51,20 @@ class LayananResource extends Resource
                         ->prefix('Rp')
                         ->columnSpan(1),
 
-                    Forms\Components\Toggle::make('is_promo')
-                        ->label('Promo Aktif?')
-                        ->default(false)
-                        ->helperText('Centang jika layanan ini sedang promo')
+                    Forms\Components\Select::make('promo_id')
+                        ->label('Pilih Promo (Opsional)')
+                        // Pastikan relasi 'promo' sudah ada di App\Models\Layanan
+                        ->relationship(
+                            'promo', // 1. Nama Relasi Eloquent
+                            'nama_promo', // 2. Atribut Judul yang Ditampilkan
+                            // 3. Query Modifier Closure (Memfilter Promo Aktif)
+                            fn (Builder $query) => $query->whereDate('tanggal_berakhir', '>=', now())
+                        )
+                        ->placeholder('Tidak ada promo yang diterapkan')
+                        ->nullable()
+                        ->searchable()
+                        ->preload()
+                        ->helperText('Pilih promo aktif yang ingin diterapkan pada layanan ini. Kosongkan jika tidak ada promo.')
                         ->columnSpan(1),
 
                     Forms\Components\FileUpload::make('gambar')
@@ -108,12 +120,6 @@ class LayananResource extends Resource
     {
         return $table
             ->columns([
-                // Tables\Columns\ImageColumn::make('gambar')
-                //     ->label('Gambar')
-                //     ->square()
-                //     ->size(50)
-                //     ->toggleable(),
-
                 Tables\Columns\TextColumn::make('nama')
                     ->label('Nama Layanan')
                     ->searchable()
@@ -127,9 +133,17 @@ class LayananResource extends Resource
                     ->sortable()
                     ->toggleable(),
 
+                // Menampilkan Nama Promo
+                Tables\Columns\TextColumn::make('promo.nama_promo')
+                    ->label('Promo Diterapkan')
+                    ->badge()
+                    ->color('warning')
+                    ->placeholder('Tidak Ada Promo')
+                    ->sortable()
+                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make('tanggal')
                     ->label('Tanggal')
-                    // ->date('d M Y')
                     ->date('d-m-y')
                     ->sortable()
                     ->toggleable(),
@@ -147,30 +161,21 @@ class LayananResource extends Resource
                             return [];
                         }
 
-                        return collect($record->tipe_layanan)->map(function ($type) {
+                        // Menggunakan array_map dan null coalescing operator untuk keamanan
+                        return array_map(function ($type) {
                             return match ($type) {
                                 'studio' => 'Studio',
                                 'home_service' => 'Home Service',
                                 default => ucfirst($type),
                             };
-                        })->toArray();
+                        }, (array) $record->tipe_layanan);
                     })
                     ->toggleable(),
-
-                Tables\Columns\IconColumn::make('is_promo')
-                    ->label('Promo')
-                    ->boolean()
-                    ->toggleable(),
-
-                Tables\Columns\TextColumn::make('total_dipesan')
-                    ->label('Total Dipesan')
-                    ->numeric()
-                    ->sortable()
-                    ->toggleable(),
-
+                
+                // Kolom 'total_dipesan' telah dihapus sesuai permintaan.
+                
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
-                    // ->dateTime('d M Y H:i')
                     ->date('d-m-y')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -184,8 +189,17 @@ class LayananResource extends Resource
                     ])
                     ->multiple(),
 
-                Tables\Filters\TernaryFilter::make('is_promo')
-                    ->label('Status Promo'),
+                // Filter Promo
+                Tables\Filters\TernaryFilter::make('promo_id')
+                    ->label('Status Promo')
+                    ->nullable()
+                    ->placeholder('Semua Layanan')
+                    ->trueLabel('Ada Promo Diterapkan')
+                    ->falseLabel('Tidak Ada Promo')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereNotNull('promo_id'),
+                        false: fn (Builder $query) => $query->whereNull('promo_id'),
+                    ),
 
                 Tables\Filters\Filter::make('tanggal_berlaku')
                     ->label('Tanggal Tersedia')
