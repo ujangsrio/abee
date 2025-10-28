@@ -87,7 +87,7 @@ class PromoResource extends Resource
                                     } else {
                                         $sisaHari = $now->diffInDays($berakhir, false);
                                         if ($sisaHari > 0) {
-                                            return "✅ Aktif - {$sisaHari} hari lagi";
+                                            return "✅ Aktif";
                                         }
                                     }
                                 }
@@ -130,15 +130,12 @@ class PromoResource extends Resource
                         return 'success';
                     })
                     ->description(function (Promo $record) {
-                        if ($record->tanggal_berakhir >= now()) {
-                            $sisaHari = now()->diffInDays($record->tanggal_berakhir, false);
-                            if ($sisaHari > 0) {
-                                return "{$sisaHari} hari lagi";
-                            } elseif ($sisaHari == 0) {
-                                return 'Hari ini';
-                            }
+                        if ($record->tanggal_berakhir < now()) {
+                            return 'danger';
+                        } elseif ($record->tanggal_berakhir->isToday()) {
+                            return 'warning';
                         }
-                        return 'Berakhir';
+                        return 'success';
                     }),
 
                 Tables\Columns\IconColumn::make('hanya_member')
