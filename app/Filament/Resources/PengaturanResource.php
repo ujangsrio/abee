@@ -43,7 +43,8 @@ class PengaturanResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->label('Nama Lengkap')
                             ->required()
-                            ->maxLength(255)
+                            ->minLength(5) 
+                            ->maxLength(50)
                             ->placeholder('Masukkan nama lengkap admin'),
 
                         Forms\Components\TextInput::make('email')
@@ -57,24 +58,29 @@ class PengaturanResource extends Resource
                     ->columns(1),
 
                 Forms\Components\Section::make('Keamanan Akun')
-                    ->description('Perbarui kata sandi untuk meningkatkan keamanan akun.')
+                    // DESKRIPSI DIUBAH: Menjelaskan perlu adanya current password
+                    ->description('Untuk mengubah kata sandi, masukkan kata sandi Anda saat ini, diikuti dengan kata sandi baru. Kosongkan jika tidak ingin mengubah.')
                     ->schema([
+                        // DIKEMBALIKAN: current_password field dan validasinya
                         Forms\Components\TextInput::make('current_password')
                             ->label('Kata Sandi Saat Ini')
                             ->password()
                             ->requiredWith('new_password')
                             ->rule('current_password')
                             ->dehydrated(false)
+                            ->revealable() // <-- Ditambahkan revealable()
                             ->placeholder('Masukkan kata sandi saat ini'),
 
                         Forms\Components\TextInput::make('new_password')
                             ->label('Kata Sandi Baru')
                             ->password()
+                            ->statePath('password') // <-- PERBAIKAN PENTING: Memetakan ke kolom 'password' model
                             ->rule(Password::default())
                             ->minLength(8)
                             ->same('new_password_confirmation')
                             ->dehydrated(fn($state) => filled($state))
                             ->dehydrateStateUsing(fn($state) => filled($state) ? Hash::make($state) : null)
+                            ->revealable() // <-- Ditambahkan revealable()
                             ->placeholder('Masukkan kata sandi baru (min. 8 karakter)'),
 
                         Forms\Components\TextInput::make('new_password_confirmation')
@@ -82,6 +88,7 @@ class PengaturanResource extends Resource
                             ->password()
                             ->requiredWith('new_password')
                             ->dehydrated(false)
+                            ->revealable() // <-- Ditambahkan revealable()
                             ->placeholder('Konfirmasi kata sandi baru'),
                     ])
                     ->columns(1),
@@ -98,7 +105,7 @@ class PengaturanResource extends Resource
 
                         Forms\Components\Placeholder::make('updated_at')
                             ->label('Terakhir Diupdate')
-                            ->content(fn($record) => $record?->updated_at?->format('d M Y, H:i')),
+                            ->content(fn($record) => $record?->updated_at?->format('d M Y, H:i')), 
                     ])
                     ->columns(2)
                     ->visible(fn($record) => $record !== null),
@@ -129,8 +136,12 @@ class PengaturanResource extends Resource
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
-                    // ->dateTime('d M Y')
                     ->date('d-m-y')
+                    ->sortable(),
+                
+                Tables\Columns\TextColumn::make('updated_at') 
+                    ->label('Diupdate')
+                    ->dateTime('d-m-y, H:i') 
                     ->sortable(),
             ])
             ->filters([

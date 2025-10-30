@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\LayananResource\Pages;
 
 use App\Filament\Resources\LayananResource;
-use App\Models\Slot;
+use App\Models\Slot; // Import ini tidak lagi digunakan, tapi biarkan saja
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateLayanan extends CreateRecord
@@ -12,13 +12,9 @@ class CreateLayanan extends CreateRecord
 
     protected function afterCreate(): void
     {
-        // Buat slot otomatis sesuai tanggal & jam utama
-        if ($this->record->tanggal && $this->record->jam) {
-            Slot::create([
-                'layanan_id' => $this->record->id,
-                'tanggal' => $this->record->tanggal,
-                'jam' => $this->record->jam,
-            ]);
-        }
+        // Logika slot otomatis lama telah dihapus karena sekarang menggunakan 
+        // sistem jadwal berulang (recurring_schedule) yang tidak bergantung pada 
+        // field 'tanggal' dan 'jam' sederhana.
+        return;
     }
 }

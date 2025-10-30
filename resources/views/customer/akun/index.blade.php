@@ -18,7 +18,8 @@
         <div class="space-y-5">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Nama</label>
-                <input type="text" value="{{ $customer->name }}" disabled
+                {{-- PERBAIKAN PENTING: Mengakses Nama melalui relasi 'user' --}}
+                <input type="text" value="{{ $customer->user->name ?? '-' }}" disabled
                     class="w-full bg-gray-100 border border-gray-300 rounded-md px-3 py-2">
             </div>
 

@@ -21,11 +21,12 @@ class BookingController extends Controller
             $layananWithSlots = Layanan::whereHas('slots', function ($query) {
                 $query->where('tanggal', '>=', now()->format('Y-m-d'));
             })
+                // Eager load promo agar perhitungan biaya di frontend lebih akurat
                 ->with(['slots' => function ($query) {
                     $query->where('tanggal', '>=', now()->format('Y-m-d'))
                         ->orderBy('tanggal')
                         ->orderBy('jam');
-                }])
+                }, 'promo']) // <-- Tambah eager load 'promo'
                 ->get();
 
             // Format data untuk dropdown
@@ -104,11 +105,27 @@ class BookingController extends Controller
             ]);
 
             $serviceId = $request->service_id;
-            $layanan = Layanan::findOrFail($serviceId);
+            // Eager load 'promo' untuk mendapatkan data diskon yang akurat
+            $layanan = Layanan::with('promo')->findOrFail($serviceId);
 
             $basePrice = $layanan->harga;
             $discount = 0;
             $promoName = null;
+
+            // --- LOGIKA PERHITUNGAN DISKON BARU (Menggunakan Relasi Promo) ---
+            if ($layanan->promo) {
+                $promo = $layanan->promo;
+                
+                // Pastikan promo belum kadaluarsa (jika ada tanggal berakhir)
+                if (!$promo->tanggal_berakhir || now()->lt($promo->tanggal_berakhir)) {
+                    // Asumsi $promo->diskon adalah persentase (misal 10 untuk 10%)
+                    $diskonPersen = $promo->diskon ?? 0;
+                    $discount = floor($basePrice * ($diskonPersen / 100));
+                    $promoName = $promo->nama_promo;
+                }
+            }
+            // -----------------------------------------------------------------
+
             $totalAfterDiscount = $basePrice - $discount;
             $dp = 50000;
             $remainingPayment = $totalAfterDiscount - $dp;
@@ -137,11 +154,11 @@ class BookingController extends Controller
             return response()->json([
                 'service_name' => $layanan->nama,
                 'base_price' => $basePrice,
-                'discount' => $discount,
+                'discount' => (int) $discount, // Pastikan integer
                 'promo_name' => $promoName,
-                'total_after_discount' => $totalAfterDiscount,
+                'total_after_discount' => (int) $totalAfterDiscount, // Pastikan integer
                 'dp' => $dp,
-                'remaining_payment' => $remainingPayment,
+                'remaining_payment' => (int) $remainingPayment, // Pastikan integer
                 'service_type' => $serviceType
             ]);
         } catch (\Exception $e) {
@@ -152,13 +169,30 @@ class BookingController extends Controller
 
     public function store(Request $request)
     {
+        // --- VALIDASI YANG DIPERBARUI ---
         $request->validate([
             'service_id' => 'required|exists:layanans,id',
             'time' => 'required',
             'tanggal' => 'required|date',
             'tipe_pembayaran' => 'required|in:dp,full',
             'bukti_transfer' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+        ], [
+            // Pesan Kustom untuk Test Case
+            // Case 1: Tidak memilih layanan/tanggal (diwakili oleh service_id/tanggal/time required)
+            'service_id.required' => 'Silakan pilih layanan dan tanggal terlebih dahulu.',
+            'time.required' => 'Silakan pilih layanan dan tanggal terlebih dahulu.',
+            'tanggal.required' => 'Silakan pilih layanan dan tanggal terlebih dahulu.',
+            
+            // Case 4: Tanpa upload bukti pembayaran
+            'bukti_transfer.required' => 'Bukti pembayaran wajib diunggah',
+            
+            // Case 2: Ukuran file melebihi batas
+            'bukti_transfer.max' => 'Ukuran file maksimal 2MB',
+            
+            // Case 3: Format file tidak valid
+            'bukti_transfer.mimes' => 'Format file tidak valid',
         ]);
+        // ---------------------------------
 
         try {
             $customer = Auth::guard('customer')->user();
@@ -209,8 +243,9 @@ class BookingController extends Controller
             }
 
             $bookings = CustomerBooking::with(['service' => function ($query) {
-                $query->select('id', 'nama', 'harga', 'deskripsi', 'gambar', 'tipe_layanan');
-            }])
+                // Pastikan promo_id dimuat
+                $query->select('id', 'nama', 'harga', 'deskripsi', 'gambar', 'tipe_layanan', 'promo_id'); 
+            }, 'service.promo']) // <-- Eager load relasi Promo
                 ->where('customer_id', $customerProfile->id)
                 ->whereNotIn('status', ['Selesai', 'Dibatalkan'])
                 ->orderBy('date', 'asc')
@@ -245,8 +280,9 @@ class BookingController extends Controller
             }
 
             $bookings = CustomerBooking::with(['service' => function ($query) {
-                $query->select('id', 'nama', 'harga', 'deskripsi', 'gambar', 'tipe_layanan');
-            }])
+                // Pastikan promo_id dimuat
+                $query->select('id', 'nama', 'harga', 'deskripsi', 'gambar', 'tipe_layanan', 'promo_id');
+            }, 'service.promo']) // <-- Eager load relasi Promo
                 ->where('customer_id', $customerProfile->id)
                 ->whereIn('status', ['Selesai', 'Dibatalkan'])
                 ->orderBy('date', 'desc')
@@ -273,8 +309,9 @@ class BookingController extends Controller
             $customerProfile = $customer->customer;
 
             $booking = CustomerBooking::with(['service' => function ($query) {
-                $query->select('id', 'nama', 'harga', 'deskripsi', 'gambar', 'tipe_layanan');
-            }])
+                // Pastikan promo_id dimuat
+                $query->select('id', 'nama', 'harga', 'deskripsi', 'gambar', 'tipe_layanan', 'promo_id');
+            }, 'service.promo']) // <-- Eager load relasi Promo
                 ->where('id', $id)
                 ->where('customer_id', $customerProfile->id)
                 ->firstOrFail();
@@ -355,25 +392,35 @@ class BookingController extends Controller
         $discount = 0;
         $promoName = null;
 
-        if ($booking->service && $booking->service->is_promo) {
-            $discount = $basePrice * 0.1;
-            $promoName = 'Promo Spesial';
+        // --- LOGIKA PERHITUNGAN DISKON BARU (Menggunakan Relasi Promo) ---
+        if ($booking->service && $booking->service->promo) {
+            $promo = $booking->service->promo;
+            
+            // Cek tanggal berakhir promo (asumsi Promo model memiliki 'tanggal_berakhir')
+            if (!$promo->tanggal_berakhir || now()->lt($promo->tanggal_berakhir)) {
+                $diskonPersen = $promo->diskon ?? 0;
+                // Hitung diskon dalam Rupiah
+                $discount = floor($basePrice * ($diskonPersen / 100));
+                $promoName = $promo->nama_promo;
+            }
         }
+        // -----------------------------------------------------------------
 
         $totalAfterDiscount = $basePrice - $discount;
 
+        // Logika pembayaran DP
         $isFullPayment = $booking->tipe_pembayaran === 'full';
         $isDpConfirmed = $booking->status_dp === 'Lunas';
-        $dp = $isFullPayment ? 0 : 50000;
+        $dp = $isFullPayment ? 0 : 50000; // DP tetap 50000 jika bukan full payment
         $remainingPayment = $isFullPayment ? 0 : ($totalAfterDiscount - $dp);
 
         return [
             'base_price' => $basePrice,
-            'discount' => $discount,
+            'discount' => (int) $discount,
             'promo_name' => $promoName,
-            'total_after_discount' => $totalAfterDiscount,
+            'total_after_discount' => (int) $totalAfterDiscount,
             'dp' => $dp,
-            'remaining_payment' => $remainingPayment,
+            'remaining_payment' => (int) $remainingPayment,
             'is_full_payment' => $isFullPayment,
             'is_dp_confirmed' => $isDpConfirmed,
         ];
