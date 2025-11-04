@@ -95,18 +95,15 @@ class DataPelangganResource extends Resource
                 Tables\Columns\TextColumn::make('index')
                     ->label('No.')
                     ->rowIndex(),
-                // ->sortable(false),
 
                 Tables\Columns\TextColumn::make('name')
                     ->label('Nama')
                     ->searchable()
-                    // ->sortable()
                     ->weight('medium'),
 
                 Tables\Columns\TextColumn::make('user.email')
                     ->label('Email')
                     ->searchable()
-                    // ->sortable()
                     ->copyable()
                     ->icon('heroicon-o-envelope')
                     ->iconColor('primary'),
@@ -114,7 +111,6 @@ class DataPelangganResource extends Resource
                 Tables\Columns\TextColumn::make('whatsapp')
                     ->label('No. WhatsApp')
                     ->searchable()
-                    // ->sortable()
                     ->copyable()
                     ->icon('heroicon-o-phone')
                     ->iconColor('success'),
@@ -130,16 +126,13 @@ class DataPelangganResource extends Resource
                 Tables\Columns\TextColumn::make('kode_member')
                     ->label('Kode Member')
                     ->searchable()
-                    // ->sortable()
                     ->placeholder('-')
                     ->color('primary')
                     ->weight('semibold'),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Tanggal Daftar')
-                    // ->dateTime('d M Y')
-                    ->date('d-m-y')
-                    // ->sortable()
+                    ->date('d-m-Y') // FORMAT DIPERBAIKI
                     ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
@@ -177,6 +170,6 @@ class DataPelangganResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with('user')->latest();
+        return parent::getEloquentQuery()->with(['user'])->latest();
     }
 }

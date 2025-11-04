@@ -115,7 +115,7 @@
                 <label for="tanggalSelect" class="block text-sm font-medium text-gray-700 mb-1">
                     Pilih Tanggal <span class="text-red-500">*</span>
                 </label>
-                <select id="tanggalSelect" name="tanggal" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm @error('tanggal') border-red-500 @enderror" required>
+                <select id="tanggalSelect" name="tanggal" class="mt-1 block w-full rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm border {{ $errors->has('tanggal') ? 'border-red-500' : 'border-gray-300' }}" required>
                     <option value="">-- Pilih Tanggal --</option>
                     @foreach($availableDates as $tanggal => $info)
                         @php
@@ -142,7 +142,7 @@
                 <label for="timeSelect" class="block text-sm font-medium text-gray-700 mb-1">
                     Jam Tersedia <span class="text-red-500">*</span>
                 </label>
-                <select id="timeSelect" name="time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm @error('time') border-red-500 @enderror" required>
+                <select id="timeSelect" name="time" class="mt-1 block w-full rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm border {{ $errors->has('time') ? 'border-red-500' : 'border-gray-300' }}" required>
                     <option value="">-- Pilih waktu --</option>
                     @if(old('time'))
                         <option value="{{ old('time') }}" selected>{{ old('time') }}</option>
@@ -324,7 +324,7 @@
                     Upload Bukti Pembayaran <span class="text-red-500">*</span>
                 </label>
                 <input type="file" id="bukti_transfer" name="bukti_transfer" accept="image/jpeg,image/png,image/jpg"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm @error('bukti_transfer') border-red-500 @enderror">
+                        class="mt-1 block w-full rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm border {{ $errors->has('bukti_transfer') ? 'border-red-500' : 'border-gray-300' }}">
                 <p class="text-xs text-gray-500 mt-1">Format: JPG, JPEG, PNG. Maksimal 2MB.</p>
                 @error('bukti_transfer') 
                     <p class="text-xs text-red-600 mt-1">{{ $message }}</p> 

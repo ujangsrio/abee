@@ -22,7 +22,6 @@ class HistoryLayananResource extends Resource
     protected static ?string $pluralModelLabel = 'History Layanan';
     protected static ?int $navigationSort = 3;
 
-    // Hanya untuk menampilkan data — tidak bisa tambah/edit/hapus langsung
     public static function canCreate(): bool
     {
         return false;
@@ -48,7 +47,6 @@ class HistoryLayananResource extends Resource
                         ->disabled()
                         ->maxLength(255),
 
-                    // ✅ perbaikan: relasi ke Layanan pakai 'nama'
                     Forms\Components\Select::make('service_id')
                         ->label('Layanan')
                         ->relationship('service', 'nama')
@@ -57,12 +55,11 @@ class HistoryLayananResource extends Resource
                     Forms\Components\DatePicker::make('date')
                         ->label('Tanggal Booking')
                         ->disabled()
-                        ->displayFormat('d M Y'),
+                        ->displayFormat('d-m-Y'), // FORMAT DIPERBAIKI
 
                     Forms\Components\TimePicker::make('time')
                         ->label('Waktu Booking')
                         ->disabled()
-                        ->displayFormat('d-m-y')
                         ->seconds(false),
                 ])
                 ->columns(2),
@@ -80,7 +77,6 @@ class HistoryLayananResource extends Resource
                                 })->implode(', ');
                             }
 
-                            // Jika data disimpan dalam bentuk string JSON
                             if (is_string($state) && str_contains($state, '[')) {
                                 $decoded = json_decode($state, true);
                                 if (is_array($decoded)) {
@@ -114,14 +110,12 @@ class HistoryLayananResource extends Resource
                 ])
                 ->columns(2),
 
-
-
             Forms\Components\Section::make('Bukti Transfer')
                 ->schema([
                     Forms\Components\FileUpload::make('bukti_transfer')
                         ->label('Bukti Transfer')
                         ->image()
-                        ->visibility('public') // ✅ pastikan bisa diakses
+                        ->visibility('public')
                         ->directory('bukti-transfer')
                         ->disabled()
                         ->columnSpanFull(),
@@ -143,7 +137,6 @@ class HistoryLayananResource extends Resource
                     ->searchable()
                     ->weight('medium'),
 
-                // ✅ gunakan 'service.nama' bukan 'service.name'
                 Tables\Columns\TextColumn::make('service.nama')
                     ->label('Layanan')
                     ->sortable()
@@ -151,7 +144,7 @@ class HistoryLayananResource extends Resource
 
                 Tables\Columns\TextColumn::make('date')
                     ->label('Tanggal')
-                    ->date('d-m-y'),
+                    ->date('d-m-Y'), // FORMAT DIPERBAIKI
 
                 Tables\Columns\TextColumn::make('time')
                     ->label('Waktu'),
@@ -211,19 +204,19 @@ class HistoryLayananResource extends Resource
                 Tables\Columns\ImageColumn::make('bukti_transfer')
                     ->label('Bukti TF')
                     ->square()
-                    ->visibility('public') // ✅ pastikan gambar tampil
+                    ->visibility('public')
                     ->defaultImageUrl(asset('images/default-bukti.jpg'))
                     ->extraImgAttributes(['class' => 'object-cover'])
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
-                    ->dateTime('d M Y H:i')
+                    ->dateTime('d-m-Y H:i') // FORMAT DIPERBAIKI
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Diupdate')
-                    ->dateTime('d M Y H:i')
+                    ->dateTime('d-m-Y H:i') // FORMAT DIPERBAIKI
                     ->sortable(),
             ])
             ->filters([
@@ -266,10 +259,10 @@ class HistoryLayananResource extends Resource
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['date_from'] ?? null) {
-                            $indicators['date_from'] = 'Dari: ' . Carbon::parse($data['date_from'])->format('d M Y');
+                            $indicators['date_from'] = 'Dari: ' . Carbon::parse($data['date_from'])->format('d-m-Y');
                         }
                         if ($data['date_until'] ?? null) {
-                            $indicators['date_until'] = 'Sampai: ' . Carbon::parse($data['date_until'])->format('d M Y');
+                            $indicators['date_until'] = 'Sampai: ' . Carbon::parse($data['date_until'])->format('d-m-Y');
                         }
                         return $indicators;
                     }),
@@ -285,7 +278,6 @@ class HistoryLayananResource extends Resource
             ->actions([
                 Tables\Actions\ViewAction::make(),
 
-                // ✅ Tambahkan aksi dinamis dengan notifikasi
                 Tables\Actions\Action::make('konfirmasi')
                     ->label('Konfirmasi')
                     ->icon('heroicon-o-check-circle')

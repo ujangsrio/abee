@@ -73,64 +73,67 @@ class LaporanDataReservasiResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TagsColumn::make('tipe_layanan')
-                    ->label('Tipe Layanan')
-                    ->getStateUsing(function ($record) {
-                        $tipeLayanan = $record->tipe_layanan;
+            Tables\Columns\TextColumn::make('tipe_layanan')
+                ->label('Tipe Layanan')
+                ->formatStateUsing(function ($state) {
+                    $tipeLayanan = $state;
 
-                        if (is_array($tipeLayanan)) {
-                            return collect($tipeLayanan)->map(function ($item) {
-                                return match ($item) {
-                                    'home_service' => 'Home Service',
-                                    'studio' => 'Studio',
-                                    default => ucfirst($item)
-                                };
-                            })->toArray();
-                        }
-
-                        if (is_string($tipeLayanan)) {
-                            try {
-                                $decoded = json_decode($tipeLayanan, true);
-                                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                                    return collect($decoded)->map(function ($item) {
-                                        return match ($item) {
-                                            'home_service' => 'Home Service',
-                                            'studio' => 'Studio',
-                                            default => ucfirst($item)
-                                        };
-                                    })->toArray();
-                                }
-                            } catch (\Exception $e) {
-                                // Jika gagal decode
-                            }
-                        }
-
-                        if (is_string($tipeLayanan)) {
-                            return [match ($tipeLayanan) {
+                    if (is_array($tipeLayanan)) {
+                        return collect($tipeLayanan)->map(function ($item) {
+                            return match ($item) {
                                 'home_service' => 'Home Service',
                                 'studio' => 'Studio',
-                                default => ucfirst($tipeLayanan)
-                            }];
+                                default => ucfirst($item)
+                            };
+                        })->implode(', ');
+                    }
+
+                    if (is_string($tipeLayanan)) {
+                        try {
+                            $decoded = json_decode($tipeLayanan, true);
+                            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                return collect($decoded)->map(function ($item) {
+                                    return match ($item) {
+                                        'home_service' => 'Home Service',
+                                        'studio' => 'Studio',
+                                        default => ucfirst($item)
+                                    };
+                                })->implode(', ');
+                            }
+                        } catch (\Exception $e) {
+                            // Jika gagal decode
                         }
+                    }
 
-                        return ['-'];
-                    })
-                    ->separator(',')
-                    ->colors([
-                        'primary' => 'Studio',
-                        'success' => 'Home Service',
-                    ]),
+                    if (is_string($tipeLayanan)) {
+                        return match ($tipeLayanan) {
+                            'home_service' => 'Home Service',
+                            'studio' => 'Studio',
+                            default => ucfirst($tipeLayanan)
+                        };
+                    }
 
-                Tables\Columns\TextColumn::make('date')
+                    return '-';
+                })
+                ->badge()
+                ->color(function ($state) {
+                    if (str_contains($state, 'Home Service')) {
+                        return 'success';
+                    } elseif (str_contains($state, 'Studio')) {
+                        return 'primary';
+                    }
+                    return 'gray';
+                }),
+
+            Tables\Columns\TextColumn::make('date')
                     ->label('Tanggal')
-                    ->date('d/m/Y')
+                    ->date('d-m-Y') // FORMAT DIPERBAIKI
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('time')
                     ->label('Jam')
                     ->sortable(),
 
-                // SOLUSI: Gunakan approach yang lebih aman tanpa inverse relationship
                 Tables\Columns\TextColumn::make('harga')
                     ->label('Harga')
                     ->money('IDR')
@@ -144,9 +147,8 @@ class LaporanDataReservasiResource extends Resource
                             ->label('Total Pendapatan')
                             ->query(function ($query) {
                                 return $query->join('layanans', 'customer_bookings.service_id', '=', 'layanans.id')
-                                    ->select(DB::raw('SUM(layanans.harga) as total'))
-                                    ->where('customer_bookings.status', 'Selesai');
-                            })
+                                    ->select(DB::raw('SUM(layanans.harga) as total'));
+                            }),
                     ]),
 
                 Tables\Columns\TextColumn::make('tipe_pembayaran')
@@ -172,184 +174,127 @@ class LaporanDataReservasiResource extends Resource
                         default => 'gray',
                     }),
 
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Dibuat')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Status Reservasi')
+                    ->badge()
+                    ->color(fn(string $state): string => match ($state) {
+                        'Menunggu' => 'warning',
+                        'Dikonfirmasi' => 'success',
+                        'Dibatalkan' => 'danger',
+                        'Selesai' => 'info',
+                        default => 'gray',
+                    }),
             ])
             ->filters([
-                // Filter Status (hanya untuk konfirmasi, seharusnya sudah Selesai)
                 SelectFilter::make('status')
                     ->label('Status Reservasi')
                     ->options([
+                        'Menunggu' => 'Menunggu',
+                        'Dikonfirmasi' => 'Dikonfirmasi',
+                        'Dibatalkan' => 'Dibatalkan',
                         'Selesai' => 'Selesai',
                     ])
-                    ->default('Selesai')
-                    ->query(function (Builder $query, array $data) {
-                        if ($data['value'] === 'Selesai') {
-                            $query->where('status', 'Selesai');
-                        }
-                    }),
+                    ->default('Selesai'),
 
-                // Filter Tanggal
-                Filter::make('tanggal')
-                    ->form([
-                        Forms\Components\DatePicker::make('tanggal_dari')
-                            ->label('Dari Tanggal'),
-                        Forms\Components\DatePicker::make('tanggal_sampai')
-                            ->label('Sampai Tanggal'),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['tanggal_dari'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('date', '>=', $date),
-                            )
-                            ->when(
-                                $data['tanggal_sampai'],
-                                fn(Builder $query, $date): Builder => $query->whereDate('date', '<=', $date),
-                            );
-                    }),
-
-                // Filter Bulan
-                Filter::make('bulan')
-                    ->form([
-                        Forms\Components\Select::make('bulan')
-                            ->label('Bulan')
-                            ->options([
-                                '01' => 'Januari',
-                                '02' => 'Februari',
-                                '03' => 'Maret',
-                                '04' => 'April',
-                                '05' => 'Mei',
-                                '06' => 'Juni',
-                                '07' => 'Juli',
-                                '08' => 'Agustus',
-                                '09' => 'September',
-                                '10' => 'Oktober',
-                                '11' => 'November',
-                                '12' => 'Desember',
-                            ])
-                            ->default(now()->format('m')),
-                        Forms\Components\Select::make('tahun')
-                            ->label('Tahun')
-                            ->options(function () {
-                                $years = [];
-                                $startYear = 2024;
-                                $currentYear = now()->year;
-
-                                for ($year = $startYear; $year <= $currentYear; $year++) {
-                                    $years[$year] = $year;
-                                }
-
-                                return $years;
-                            })
-                            ->default(now()->format('Y')),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['bulan'] && $data['tahun'],
-                                function (Builder $query) use ($data) {
-                                    $startDate = Carbon::create($data['tahun'], $data['bulan'], 1)->startOfMonth();
-                                    $endDate = Carbon::create($data['tahun'], $data['bulan'], 1)->endOfMonth();
-
-                                    return $query->whereBetween('date', [$startDate, $endDate]);
-                                }
-                            );
-                    }),
-
-                // Filter Tahun
-                Filter::make('tahun')
-                    ->form([
-                        Forms\Components\Select::make('tahun')
-                            ->label('Tahun')
-                            ->options(function () {
-                                $years = [];
-                                $startYear = 2024;
-                                $currentYear = now()->year;
-
-                                for ($year = $startYear; $year <= $currentYear; $year++) {
-                                    $years[$year] = $year;
-                                }
-
-                                return $years;
-                            })
-                            ->default(now()->format('Y')),
-                    ])
-                    ->query(function (Builder $query, array $data): Builder {
-                        return $query
-                            ->when(
-                                $data['tahun'],
-                                function (Builder $query) use ($data) {
-                                    $startDate = Carbon::create($data['tahun'], 1, 1)->startOfYear();
-                                    $endDate = Carbon::create($data['tahun'], 12, 31)->endOfYear();
-
-                                    return $query->whereBetween('date', [$startDate, $endDate]);
-                                }
-                            );
-                    }),
-
-                // Filter Hari Ini
-                Filter::make('hari_ini')
-                    ->label('Hari Ini')
-                    ->query(fn(Builder $query): Builder => $query->whereDate('date', today())),
-
-                // Filter 7 Hari Terakhir
-                Filter::make('7_hari_terakhir')
-                    ->label('7 Hari Terakhir')
-                    ->query(fn(Builder $query): Builder => $query->whereBetween('date', [today()->subDays(6), today()])),
-
-                // Filter 30 Hari Terakhir
-                Filter::make('30_hari_terakhir')
-                    ->label('30 Hari Terakhir')
-                    ->query(fn(Builder $query): Builder => $query->whereBetween('date', [today()->subDays(29), today()])),
-
-                // Filter Layanan
-                SelectFilter::make('service_id')
-                    ->label('Layanan')
-                    ->relationship('service', 'nama')
-                    ->searchable()
-                    ->preload(),
-
-                // Filter Tipe Layanan
-                SelectFilter::make('tipe_layanan')
-                    ->label('Tipe Layanan')
+                SelectFilter::make('status_dp')
+                    ->label('Status Pembayaran')
                     ->options([
-                        'studio' => 'Studio',
-                        'home_service' => 'Home Service',
-                    ])
-                    ->multiple()
-                    ->query(function (Builder $query, array $data) {
-                        if (!empty($data['values'])) {
-                            $query->where(function ($q) use ($data) {
-                                foreach ($data['values'] as $tipe) {
-                                    $q->orWhereJsonContains('tipe_layanan', $tipe);
-                                }
-                            });
-                        }
-                    }),
+                        'Belum' => 'Belum',
+                        'Lunas' => 'Lunas',
+                    ]),
 
-                // Filter Tipe Pembayaran
                 SelectFilter::make('tipe_pembayaran')
                     ->label('Tipe Pembayaran')
                     ->options([
                         'dp' => 'DP',
                         'full' => 'Lunas',
                     ]),
+
+                SelectFilter::make('service_id')
+                    ->label('Layanan')
+                    ->relationship('service', 'nama'),
+
+                Filter::make('date')
+                    ->form([
+                        Forms\Components\DatePicker::make('date_from')
+                            ->label('Dari Tanggal')
+                            ->displayFormat('d-m-Y'), // FORMAT DIPERBAIKI
+                        Forms\Components\DatePicker::make('date_until')
+                            ->label('Sampai Tanggal')
+                            ->displayFormat('d-m-Y'), // FORMAT DIPERBAIKI
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['date_from'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('date', '>=', $date),
+                            )
+                            ->when(
+                                $data['date_until'],
+                                fn(Builder $query, $date): Builder => $query->whereDate('date', '<=', $date),
+                            );
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+
+                        if ($data['date_from'] ?? null) {
+                            $indicators['date_from'] = 'Dari: ' . Carbon::parse($data['date_from'])->format('d-m-Y');
+                        }
+
+                        if ($data['date_until'] ?? null) {
+                            $indicators['date_until'] = 'Sampai: ' . Carbon::parse($data['date_until'])->format('d-m-Y');
+                        }
+
+                        return $indicators;
+                    }),
             ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
+            ->headerActions([
+                Tables\Actions\Action::make('export')
+                    ->label('Export Excel')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->action(function (array $data = []) {
+                        $dateFrom = $data['date_from'] ?? null;
+                        $dateUntil = $data['date_until'] ?? null;
+                        $status = $data['status'] ?? null;
+                        $serviceId = $data['service_id'] ?? null;
+
+                        $fileName = 'laporan-reservasi-' . now()->format('d-m-Y') . '.xlsx';
+
+                        return Excel::download(
+                            new LaporanReservasiExport($dateFrom, $dateUntil, $status, $serviceId),
+                            $fileName
+                        );
+                    })
+                    ->form([
+                        Forms\Components\DatePicker::make('date_from')
+                            ->label('Dari Tanggal')
+                            ->displayFormat('d-m-Y'), // FORMAT DIPERBAIKI
+                        Forms\Components\DatePicker::make('date_until')
+                            ->label('Sampai Tanggal')
+                            ->displayFormat('d-m-Y'), // FORMAT DIPERBAIKI
+                        Forms\Components\Select::make('status')
+                            ->label('Status Reservasi')
+                            ->options([
+                                'Menunggu' => 'Menunggu',
+                                'Dikonfirmasi' => 'Dikonfirmasi',
+                                'Dibatalkan' => 'Dibatalkan',
+                                'Selesai' => 'Selesai',
+                            ]),
+                        Forms\Components\Select::make('service_id')
+                            ->label('Layanan')
+                            ->relationship('service', 'nama'),
+                    ])
+                    ->modalHeading('Export Laporan Reservasi')
+                    ->modalSubmitActionLabel('Export')
+                    ->modalWidth('md'),
             ])
-            ->bulkActions([
-                // Tidak ada bulk actions untuk laporan
-            ])
-            ->defaultSort('date', 'desc')
-            ->emptyStateHeading('Tidak ada data laporan')
-            ->emptyStateDescription('Belum ada reservasi yang selesai dalam periode yang dipilih.')
+            ->emptyStateHeading('Belum ada data laporan')
+            ->emptyStateDescription('Data laporan akan muncul di sini ketika ada reservasi yang selesai.')
             ->emptyStateIcon('heroicon-o-chart-bar')
-            ->deferFilters();
+            ->defaultSort('date', 'desc')
+            ->deferLoading()
+            ->striped();
     }
 
     public static function getRelations(): array
@@ -362,14 +307,5 @@ class LaporanDataReservasiResource extends Resource
         return [
             'index' => Pages\ListLaporanDataReservasis::route('/'),
         ];
-    }
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::where('status', 'Selesai')->count();
-    }
-
-    public static function getNavigationBadgeColor(): string|array|null
-    {
-        return 'success';
     }
 }

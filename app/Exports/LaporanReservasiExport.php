@@ -6,20 +6,22 @@ use App\Models\CustomerBooking;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithTitle;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Carbon\Carbon;
 
-class LaporanReservasiExport implements FromCollection, WithHeadings, WithMapping, WithStyles, WithTitle
+class LaporanReservasiExport implements FromCollection, WithHeadings, WithMapping
 {
-    protected $startDate;
-    protected $endDate;
+    protected $dateFrom;
+    protected $dateUntil;
+    protected $status;
+    protected $serviceId;
 
-    public function __construct($startDate = null, $endDate = null)
+    // PERBAIKAN: Update constructor untuk menerima 4 parameter
+    public function __construct($dateFrom = null, $dateUntil = null, $status = null, $serviceId = null)
     {
-        $this->startDate = $startDate;
-        $this->endDate = $endDate;
+        $this->dateFrom = $dateFrom;
+        $this->dateUntil = $dateUntil;
+        $this->status = $status;
+        $this->serviceId = $serviceId;
     }
 
     public function collection()
@@ -27,12 +29,21 @@ class LaporanReservasiExport implements FromCollection, WithHeadings, WithMappin
         $query = CustomerBooking::with(['service', 'customer'])
             ->where('status', 'Selesai');
 
-        if ($this->startDate) {
-            $query->whereDate('date', '>=', $this->startDate);
+        // Apply filters
+        if ($this->dateFrom) {
+            $query->whereDate('date', '>=', $this->dateFrom);
         }
 
-        if ($this->endDate) {
-            $query->whereDate('date', '<=', $this->endDate);
+        if ($this->dateUntil) {
+            $query->whereDate('date', '<=', $this->dateUntil);
+        }
+
+        if ($this->status) {
+            $query->where('status', $this->status);
+        }
+
+        if ($this->serviceId) {
+            $query->where('service_id', $this->serviceId);
         }
 
         return $query->orderBy('date', 'desc')->get();
@@ -42,83 +53,33 @@ class LaporanReservasiExport implements FromCollection, WithHeadings, WithMappin
     {
         return [
             'ID',
-            'NAMA PELANGGAN',
-            'WHATSAPP',
-            'LAYANAN',
-            'TIPE LAYANAN',
-            'TANGGAL',
-            'JAM',
-            'HARGA (Rp)',
-            'TIPE PEMBAYARAN',
-            'STATUS DP',
-            'TANGGAL DIBUAT'
+            'Nama Pelanggan',
+            'WhatsApp',
+            'Layanan',
+            'Tanggal',
+            'Jam',
+            'Harga',
+            'Tipe Pembayaran',
+            'Status DP',
+            'Status Reservasi',
+            'Tanggal Dibuat'
         ];
     }
 
-    public function map($reservasi): array
+    public function map($booking): array
     {
-        // Format tipe layanan
-        $tipeLayanan = $reservasi->tipe_layanan;
-        $tipeLayananFormatted = '-';
-
-        if (is_array($tipeLayanan)) {
-            $tipeLayananFormatted = collect($tipeLayanan)->map(function ($item) {
-                return match ($item) {
-                    'home_service' => 'Home Service',
-                    'studio' => 'Studio',
-                    default => ucfirst($item)
-                };
-            })->implode(', ');
-        } elseif (is_string($tipeLayanan)) {
-            try {
-                $decoded = json_decode($tipeLayanan, true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                    $tipeLayananFormatted = collect($decoded)->map(function ($item) {
-                        return match ($item) {
-                            'home_service' => 'Home Service',
-                            'studio' => 'Studio',
-                            default => ucfirst($item)
-                        };
-                    })->implode(', ');
-                }
-            } catch (\Exception $e) {
-                $tipeLayananFormatted = $tipeLayanan;
-            }
-        }
-
         return [
-            $reservasi->id,
-            $reservasi->customer_name,
-            $reservasi->customer->whatsapp ?? '-',
-            $reservasi->service->nama ?? 'Layanan tidak ditemukan',
-            $tipeLayananFormatted,
-            Carbon::parse($reservasi->date)->format('d/m/Y'),
-            $reservasi->time,
-            number_format($reservasi->service->harga ?? 0, 0, ',', '.'),
-            $reservasi->tipe_pembayaran === 'full' ? 'Lunas' : 'DP',
-            $reservasi->status_dp === 'Lunas' ? 'Lunas' : 'Belum',
-            Carbon::parse($reservasi->created_at)->format('d/m/Y H:i'),
+            $booking->id,
+            $booking->customer_name,
+            $booking->customer->whatsapp ?? '-',
+            $booking->service->nama ?? '-',
+            Carbon::parse($booking->date)->format('d-m-Y'),
+            $booking->time,
+            'Rp ' . number_format($booking->service->harga ?? 0, 0, ',', '.'),
+            $booking->tipe_pembayaran == 'full' ? 'Lunas' : 'DP',
+            $booking->status_dp,
+            $booking->status,
+            Carbon::parse($booking->created_at)->format('d-m-Y H:i'),
         ];
-    }
-
-    public function styles(Worksheet $sheet)
-    {
-        // Header style
-        $sheet->getStyle('A1:K1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:K1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
-        $sheet->getStyle('A1:K1')->getFill()->getStartColor()->setARGB('FF2D5F7D');
-        $sheet->getStyle('A1:K1')->getFont()->getColor()->setARGB('FFFFFFFF');
-
-        // Auto size columns
-        foreach (range('A', 'K') as $column) {
-            $sheet->getColumnDimension($column)->setAutoSize(true);
-        }
-
-        return [];
-    }
-
-    public function title(): string
-    {
-        return 'Laporan Reservasi';
     }
 }

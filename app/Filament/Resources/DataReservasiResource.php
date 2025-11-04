@@ -81,7 +81,8 @@ class DataReservasiResource extends Resource
                         Forms\Components\DatePicker::make('date')
                             ->label('Tanggal')
                             ->required()
-                            ->native(false),
+                            ->native(false)
+                            ->displayFormat('d-m-Y'), // FORMAT DIPERBAIKI
                         Forms\Components\TimePicker::make('time')
                             ->label('Jam')
                             ->required()
@@ -129,8 +130,6 @@ class DataReservasiResource extends Resource
                             ->directory('bukti')
                             ->disk('public')
                             ->visibility('public')
-                            // ->enableOpen()
-                            // ->enableDownload()
                             ->maxSize(2048),
                     ])->columns(2),
             ]);
@@ -169,7 +168,6 @@ class DataReservasiResource extends Resource
                             })->implode(', ');
                         }
 
-                        // Jika state adalah string JSON, decode dulu
                         if (is_string($state)) {
                             try {
                                 $decoded = json_decode($state, true);
@@ -187,7 +185,6 @@ class DataReservasiResource extends Resource
                             }
                         }
 
-                        // Fallback untuk string biasa
                         if (is_string($state)) {
                             return match ($state) {
                                 'home_service' => 'Home Service',
@@ -203,8 +200,7 @@ class DataReservasiResource extends Resource
 
                 Tables\Columns\TextColumn::make('date')
                     ->label('Tanggal')
-                    // ->date('d/m/Y')
-                    ->date('d-m-y')
+                    ->date('d-m-Y') // FORMAT DIPERBAIKI
                     ->sortable(),
                 Tables\Columns\TextColumn::make('time')
                     ->label('Jam')
@@ -215,8 +211,6 @@ class DataReservasiResource extends Resource
                     ->visibility('public')
                     ->square()
                     ->height(70)
-
-                    // ->enableOpen()
                     ->openUrlInNewTab()
                     ->getStateUsing(
                         fn($record) =>
@@ -260,12 +254,6 @@ class DataReservasiResource extends Resource
                         'Selesai' => 'info',
                         default => 'gray',
                     }),
-                // Tables\Columns\TextColumn::make('created_at')
-                //     ->label('Dibuat')
-                //     // ->dateTime('d/m/Y H:i')
-                //     ->date('d-m-y')
-                //     ->sortable()
-                //     ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -293,16 +281,15 @@ class DataReservasiResource extends Resource
                     ->relationship('service', 'nama'),
             ])
             ->actions([
-                 Tables\Actions\Action::make('viewBukti')
+                Tables\Actions\Action::make('viewBukti')
                     ->label('Lihat Bukti')
                     ->icon('heroicon-o-eye')
                     ->color('info')
                     ->visible(fn(CustomerBooking $record) => !empty($record->bukti_transfer))
                     ->action(function (CustomerBooking $record) {
                         if ($record->bukti_transfer && Storage::disk('public')->exists($record->bukti_transfer)) {
-                            // Ambil URL publik dari file di storage
-                            $url = Storage::disk('public')->url($record->bukti_transfer);
-                            return redirect()->away($url); // arahkan ke tab baru
+                            $url = asset('storage/' . $record->bukti_transfer);
+                            return redirect()->away($url);
                         }
 
                         Notification::make()
@@ -310,15 +297,9 @@ class DataReservasiResource extends Resource
                             ->danger()
                             ->send();
                     })
-                    // ->modalActions([
-                    //     Tables\Actions\Action::make('close')
-                    //         ->label('Tutup')
-                    //         ->color('secondary'),
-                    // ])
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Tutup')
                     ->modalWidth('2xl'),
-
 
                 Tables\Actions\Action::make('confirmDp')
                     ->label('Konfirmasi DP')
