@@ -110,7 +110,6 @@ class BookingController extends Controller
         }
     }
 
-
     public function availableTimes(Request $request)
     {
         try {
@@ -122,8 +121,18 @@ class BookingController extends Controller
             $serviceId = $request->service_id;
             $tanggal = $request->tanggal;
 
-            // Ambil layanan untuk mendapatkan jadwal operasional
+            Log::info('Available times request:', [
+                'service_id' => $serviceId,
+                'tanggal' => $tanggal
+            ]);
+
+            // Ambil layanan untuk mendapatkan durasi
             $layanan = Layanan::find($serviceId);
+            if (!$layanan) {
+                return response()->json(['error' => 'Layanan tidak ditemukan'], 404);
+            }
+
+            $durasiLayanan = $layanan->estimasi_durasi ?? 60;
             $waktuOperasional = $layanan->waktu_operasional;
 
             $jamBukaDefault = '08:00';
@@ -134,33 +143,101 @@ class BookingController extends Controller
                 $jamTutupDefault = $waktuOperasional['jam_tutup_default'] ?? '17:00';
             }
 
-            // Generate time slots berdasarkan jam operasional
-            $availableSlots = [];
+            // Ambil semua booking yang sudah ada untuk service dan tanggal ini
+            $existingBookings = CustomerBooking::where('service_id', $serviceId)
+                ->where('date', $tanggal)
+                ->whereIn('status', ['Menunggu', 'Dikonfirmasi'])
+                ->get(['time']);
+
+            Log::info('Existing bookings for this date:', [
+                'tanggal' => $tanggal,
+                'booked_times' => $existingBookings->pluck('time')->toArray(),
+                'durasi_layanan' => $durasiLayanan
+            ]);
+
+            // Generate semua kemungkinan time slots
+            $allTimeSlots = [];
             $startTime = Carbon::createFromTimeString($jamBukaDefault);
             $endTime = Carbon::createFromTimeString($jamTutupDefault);
 
-            // Buat slot setiap 30 menit
-            for ($time = $startTime; $time->lt($endTime); $time->addMinutes(30)) {
-                $slotTime = $time->format('H:i');
+            $currentTime = $startTime->copy();
+            while ($currentTime->lt($endTime)) {
+                $slotTime = $currentTime->format('H:i');
+                $slotEndTime = $currentTime->copy()->addMinutes($durasiLayanan)->format('H:i');
 
-                // Cek apakah slot tersedia (tidak ada booking yang bentrok)
-                $isAvailable = !CustomerBooking::where('service_id', $serviceId)
-                    ->where('date', $tanggal)
-                    ->where('time', $slotTime)
-                    ->whereIn('status', ['Menunggu', 'Dikonfirmasi'])
-                    ->exists();
+                // Cek apakah slot end time masih dalam jam operasional
+                $slotEndInOperational = Carbon::createFromTimeString($slotEndTime)->lte($endTime);
+
+                if ($slotEndInOperational) {
+                    $allTimeSlots[] = [
+                        'jam' => $slotTime,
+                        'jam_selesai' => $slotEndTime,
+                        'durasi' => $durasiLayanan
+                    ];
+                }
+
+                $currentTime->addMinutes(60);
+            }
+
+            // Filter hanya slot yang tersedia (tidak bentrok dengan booking yang ada)
+            $availableSlots = [];
+            foreach ($allTimeSlots as $slot) {
+                $isAvailable = true;
+
+                foreach ($existingBookings as $booking) {
+                    $bookingTime = $booking->time;
+                    $bookingStart = Carbon::createFromTimeString($bookingTime);
+                    $bookingEnd = $bookingStart->copy()->addMinutes($durasiLayanan);
+
+                    $slotStart = Carbon::createFromTimeString($slot['jam']);
+                    $slotEnd = Carbon::createFromTimeString($slot['jam_selesai']);
+
+                    // Cek apakah ada bentrok waktu
+                    $isOverlap = (
+                        // Slot baru dimulai dalam rentang booking yang ada
+                        $slotStart->between($bookingStart, $bookingEnd, false) ||
+                        // Slot baru berakhir dalam rentang booking yang ada
+                        $slotEnd->between($bookingStart, $bookingEnd, false) ||
+                        // Booking yang ada dimulai dalam rentang slot baru
+                        $bookingStart->between($slotStart, $slotEnd, false) ||
+                        // Booking yang ada berakhir dalam rentang slot baru
+                        $bookingEnd->between($slotStart, $slotEnd, false) ||
+                        // Waktu mulai sama
+                        $slotStart->eq($bookingStart)
+                    );
+
+                    if ($isOverlap) {
+                        $isAvailable = false;
+                        Log::info('Slot bentrok ditemukan:', [
+                            'slot_baru' => $slot['jam'] . ' - ' . $slot['jam_selesai'],
+                            'booking_ada' => $bookingTime . ' - ' . $bookingEnd->format('H:i'),
+                            'durasi' => $durasiLayanan . ' menit'
+                        ]);
+                        break;
+                    }
+                }
 
                 if ($isAvailable) {
                     $availableSlots[] = [
-                        'jam' => $slotTime,
-                        'formatted' => $slotTime
+                        'jam' => $slot['jam'],
+                        'formatted' => $slot['jam'],
+                        'durasi' => $slot['durasi'],
+                        'jam_selesai' => $slot['jam_selesai'],
+                        'display' => $slot['jam'] . ' - ' . $slot['jam_selesai'] . ''
                     ];
                 }
             }
 
+            Log::info('Available slots result:', [
+                'total_slots' => count($allTimeSlots),
+                'available_slots' => count($availableSlots),
+                'booked_slots' => count($existingBookings)
+            ]);
+
             return response()->json($availableSlots);
         } catch (\Exception $e) {
             Log::error('Error in availableTimes: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json(['error' => 'Gagal memuat jam tersedia'], 500);
         }
     }
@@ -176,48 +253,54 @@ class BookingController extends Controller
             $serviceId = $request->service_id;
             $tanggal = $request->tanggal;
 
-            // Ambil layanan untuk mendapatkan jadwal operasional
-            $layanan = Layanan::find($serviceId);
-            $waktuOperasional = $layanan->waktu_operasional;
-
-            $jamBukaDefault = '08:00';
-            $jamTutupDefault = '17:00';
-
-            if ($waktuOperasional && is_array($waktuOperasional)) {
-                $jamBukaDefault = $waktuOperasional['jam_buka_default'] ?? '08:00';
-                $jamTutupDefault = $waktuOperasional['jam_tutup_default'] ?? '17:00';
-            }
-
-            // Generate time slots
-            $availableSlots = [];
-            $startTime = Carbon::createFromTimeString($jamBukaDefault);
-            $endTime = Carbon::createFromTimeString($jamTutupDefault);
-
-            for ($time = $startTime; $time->lt($endTime); $time->addMinutes(30)) {
-                $slotTime = $time->format('H:i');
-
-                $isAvailable = !CustomerBooking::where('service_id', $serviceId)
-                    ->where('date', $tanggal)
-                    ->where('time', $slotTime)
-                    ->whereIn('status', ['Menunggu', 'Dikonfirmasi'])
-                    ->exists();
-
-                if ($isAvailable) {
-                    $availableSlots[] = [
-                        'jam' => $slotTime,
-                        'formatted' => $slotTime
-                    ];
-                }
-            }
-
-            return response()->json($availableSlots);
+            // Panggil method availableTimes yang sama
+            return $this->availableTimes($request);
         } catch (\Exception $e) {
             Log::error('Error in availableTimesByDate: ' . $e->getMessage());
             return response()->json(['error' => 'Gagal memuat jam tersedia'], 500);
         }
     }
 
+    /**
+     * Cek apakah slot waktu tersedia dengan memperhitungkan durasi
+     */
+    private function isTimeSlotAvailable($serviceId, $tanggal, $slotTime, $durasiLayanan)
+    {
+        try {
+            // Ambil semua booking yang ada
+            $existingBookings = CustomerBooking::where('service_id', $serviceId)
+                ->where('date', $tanggal)
+                ->whereIn('status', ['Menunggu', 'Dikonfirmasi'])
+                ->get(['time']);
 
+            $slotStart = Carbon::createFromTimeString($slotTime);
+            $slotEnd = $slotStart->copy()->addMinutes($durasiLayanan);
+
+            foreach ($existingBookings as $booking) {
+                $bookingTime = $booking->time;
+                $bookingStart = Carbon::createFromTimeString($bookingTime);
+                $bookingEnd = $bookingStart->copy()->addMinutes($durasiLayanan);
+
+                // Cek apakah ada bentrok waktu
+                $isOverlap = (
+                    $slotStart->between($bookingStart, $bookingEnd, false) ||
+                    $slotEnd->between($bookingStart, $bookingEnd, false) ||
+                    $bookingStart->between($slotStart, $slotEnd, false) ||
+                    $bookingEnd->between($slotStart, $slotEnd, false) ||
+                    $slotStart->eq($bookingStart)
+                );
+
+                if ($isOverlap) {
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Error in isTimeSlotAvailable: ' . $e->getMessage());
+            return false;
+        }
+    }
 
     public function calculateTotalCost(Request $request)
     {
@@ -275,11 +358,11 @@ class BookingController extends Controller
             return response()->json([
                 'service_name' => $layanan->nama,
                 'base_price' => $basePrice,
-                'discount' => (int) $discount, 
+                'discount' => (int) $discount,
                 'promo_name' => $promoName,
-                'total_after_discount' => (int) $totalAfterDiscount, 
+                'total_after_discount' => (int) $totalAfterDiscount,
                 'dp' => $dp,
-                'remaining_payment' => (int) $remainingPayment, 
+                'remaining_payment' => (int) $remainingPayment,
                 'service_type' => $serviceType
             ]);
         } catch (\Exception $e) {
@@ -326,6 +409,23 @@ class BookingController extends Controller
             $buktiTransferPath = null;
             if ($request->hasFile('bukti_transfer')) {
                 $buktiTransferPath = $request->file('bukti_transfer')->store('bukti', 'public');
+            }
+
+            // Validasi tambahan: cek ketersediaan slot dengan durasi
+            $layanan = Layanan::find($request->service_id);
+            $durasiLayanan = $layanan->estimasi_durasi ?? 60;
+
+            // Cek apakah slot masih tersedia dengan logika durasi
+            $isAvailable = $this->isTimeSlotAvailable(
+                $request->service_id,
+                $request->tanggal,
+                $request->time,
+                $durasiLayanan
+            );
+
+            if (!$isAvailable) {
+                return back()->with('error', 'Maaf, slot waktu ini sudah tidak tersedia. Silakan pilih waktu lain.')
+                    ->withInput();
             }
 
             $tipeLayanan = $request->tipe_layanan ?: 'studio';
@@ -387,7 +487,6 @@ class BookingController extends Controller
                 ->with('error', 'Terjadi kesalahan saat memuat reservasi aktif.');
         }
     }
-
 
     public function history()
     {

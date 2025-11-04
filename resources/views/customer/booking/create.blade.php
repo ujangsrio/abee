@@ -224,7 +224,7 @@
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Durasi Estimasi:</span>
-                        <span class="font-medium">{{ $selectedService->estimasi_durasi }} menit</span>
+                        <span id="serviceDuration" class="font-medium">{{ $selectedService->estimasi_durasi }} menit</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Kapasitas per Slot:</span>
@@ -233,12 +233,6 @@
                     <div class="flex justify-between">
                         <span class="text-gray-600">Jadwal Operasional:</span>
                         <span id="serviceSchedule" class="font-medium text-right">-</span>
-                    </div>
-                </div>
-                <div class="mt-3 pt-3 border-t border-purple-200">
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">Deskripsi:</span>
-                        <span class="font-medium text-right text-sm">{{ $selectedService->deskripsi }}</span>
                     </div>
                 </div>
             </div>

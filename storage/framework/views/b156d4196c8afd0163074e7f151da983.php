@@ -119,14 +119,7 @@
                 <label for="tanggalSelect" class="block text-sm font-medium text-gray-700 mb-1">
                     Pilih Tanggal <span class="text-red-500">*</span>
                 </label>
-                <select id="tanggalSelect" name="tanggal" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm <?php $__errorArgs = ['tanggal'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> border-red-500 <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>" required>
+                <select id="tanggalSelect" name="tanggal" class="mt-1 block w-full rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm border <?php echo e($errors->has('tanggal') ? 'border-red-500' : 'border-gray-300'); ?>" required>
                     <option value="">-- Pilih Tanggal --</option>
                     <?php $__currentLoopData = $availableDates; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tanggal => $info): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <?php
@@ -160,14 +153,7 @@ unset($__errorArgs, $__bag); ?>
                 <label for="timeSelect" class="block text-sm font-medium text-gray-700 mb-1">
                     Jam Tersedia <span class="text-red-500">*</span>
                 </label>
-                <select id="timeSelect" name="time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm <?php $__errorArgs = ['time'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> border-red-500 <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>" required>
+                <select id="timeSelect" name="time" class="mt-1 block w-full rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm border <?php echo e($errors->has('time') ? 'border-red-500' : 'border-gray-300'); ?>" required>
                     <option value="">-- Pilih waktu --</option>
                     <?php if(old('time')): ?>
                         <option value="<?php echo e(old('time')); ?>" selected><?php echo e(old('time')); ?></option>
@@ -263,7 +249,7 @@ unset($__errorArgs, $__bag); ?>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Durasi Estimasi:</span>
-                        <span class="font-medium"><?php echo e($selectedService->estimasi_durasi); ?> menit</span>
+                        <span id="serviceDuration" class="font-medium"><?php echo e($selectedService->estimasi_durasi); ?> menit</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Kapasitas per Slot:</span>
@@ -272,12 +258,6 @@ unset($__errorArgs, $__bag); ?>
                     <div class="flex justify-between">
                         <span class="text-gray-600">Jadwal Operasional:</span>
                         <span id="serviceSchedule" class="font-medium text-right">-</span>
-                    </div>
-                </div>
-                <div class="mt-3 pt-3 border-t border-purple-200">
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">Deskripsi:</span>
-                        <span class="font-medium text-right text-sm"><?php echo e($selectedService->deskripsi); ?></span>
                     </div>
                 </div>
             </div>
@@ -370,14 +350,7 @@ unset($__errorArgs, $__bag); ?>
                     Upload Bukti Pembayaran <span class="text-red-500">*</span>
                 </label>
                 <input type="file" id="bukti_transfer" name="bukti_transfer" accept="image/jpeg,image/png,image/jpg"
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm <?php $__errorArgs = ['bukti_transfer'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> border-red-500 <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>">
+                        class="mt-1 block w-full rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm border <?php echo e($errors->has('bukti_transfer') ? 'border-red-500' : 'border-gray-300'); ?>">
                 <p class="text-xs text-gray-500 mt-1">Format: JPG, JPEG, PNG. Maksimal 2MB.</p>
                 <?php $__errorArgs = ['bukti_transfer'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');

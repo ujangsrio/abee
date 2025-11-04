@@ -289,6 +289,22 @@ class LayananResource extends Resource
                         return $tooltip;
                     }),
 
+                Tables\Columns\TextColumn::make('promo.nama_promo')
+                    ->label('Nama Promo')
+                    ->sortable()
+                    ->searchable()
+                    ->placeholder('Tidak ada promo')
+                    ->color('success')
+                    ->weight('bold')
+                    ->icon('heroicon-o-tag')
+                    ->iconColor('success'),
+
+                Tables\Columns\IconColumn::make('is_promo')
+                    ->label('Promo Aktif')
+                    ->boolean()
+                    ->sortable(),
+
+
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Status')
                     ->boolean()
