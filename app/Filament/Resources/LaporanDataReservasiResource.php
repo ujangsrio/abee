@@ -2,7 +2,8 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\LaporanDataReservasiResource\Pages;
+use App\Filament\Resources\LaporanDataReservasiSourceResource\Pages\ListLaporanDataReservasis;
+// use App\Filament\Resources\LaporanDataReservasiResource\Pages\ListLaporanDataReservasis;
 use App\Models\CustomerBooking;
 use App\Models\Layanan;
 use App\Exports\LaporanReservasiExport;
@@ -73,59 +74,59 @@ class LaporanDataReservasiResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-            Tables\Columns\TextColumn::make('tipe_layanan')
-                ->label('Tipe Layanan')
-                ->formatStateUsing(function ($state) {
-                    $tipeLayanan = $state;
+                Tables\Columns\TextColumn::make('tipe_layanan')
+                    ->label('Tipe Layanan')
+                    ->formatStateUsing(function ($state) {
+                        $tipeLayanan = $state;
 
-                    if (is_array($tipeLayanan)) {
-                        return collect($tipeLayanan)->map(function ($item) {
-                            return match ($item) {
+                        if (is_array($tipeLayanan)) {
+                            return collect($tipeLayanan)->map(function ($item) {
+                                return match ($item) {
+                                    'home_service' => 'Home Service',
+                                    'studio' => 'Studio',
+                                    default => ucfirst($item)
+                                };
+                            })->implode(', ');
+                        }
+
+                        if (is_string($tipeLayanan)) {
+                            try {
+                                $decoded = json_decode($tipeLayanan, true);
+                                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                    return collect($decoded)->map(function ($item) {
+                                        return match ($item) {
+                                            'home_service' => 'Home Service',
+                                            'studio' => 'Studio',
+                                            default => ucfirst($item)
+                                        };
+                                    })->implode(', ');
+                                }
+                            } catch (\Exception $e) {
+                                // Jika gagal decode
+                            }
+                        }
+
+                        if (is_string($tipeLayanan)) {
+                            return match ($tipeLayanan) {
                                 'home_service' => 'Home Service',
                                 'studio' => 'Studio',
-                                default => ucfirst($item)
+                                default => ucfirst($tipeLayanan)
                             };
-                        })->implode(', ');
-                    }
-
-                    if (is_string($tipeLayanan)) {
-                        try {
-                            $decoded = json_decode($tipeLayanan, true);
-                            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                                return collect($decoded)->map(function ($item) {
-                                    return match ($item) {
-                                        'home_service' => 'Home Service',
-                                        'studio' => 'Studio',
-                                        default => ucfirst($item)
-                                    };
-                                })->implode(', ');
-                            }
-                        } catch (\Exception $e) {
-                            // Jika gagal decode
                         }
-                    }
 
-                    if (is_string($tipeLayanan)) {
-                        return match ($tipeLayanan) {
-                            'home_service' => 'Home Service',
-                            'studio' => 'Studio',
-                            default => ucfirst($tipeLayanan)
-                        };
-                    }
+                        return '-';
+                    })
+                    ->badge()
+                    ->color(function ($state) {
+                        if (str_contains($state, 'Home Service')) {
+                            return 'success';
+                        } elseif (str_contains($state, 'Studio')) {
+                            return 'primary';
+                        }
+                        return 'gray';
+                    }),
 
-                    return '-';
-                })
-                ->badge()
-                ->color(function ($state) {
-                    if (str_contains($state, 'Home Service')) {
-                        return 'success';
-                    } elseif (str_contains($state, 'Studio')) {
-                        return 'primary';
-                    }
-                    return 'gray';
-                }),
-
-            Tables\Columns\TextColumn::make('date')
+                Tables\Columns\TextColumn::make('date')
                     ->label('Tanggal')
                     ->date('d-m-Y') // FORMAT DIPERBAIKI
                     ->sortable(),
@@ -305,7 +306,7 @@ class LaporanDataReservasiResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListLaporanDataReservasis::route('/'),
+            'index' => ListLaporanDataReservasis::route('/'), // ← PASTIKAN INI
         ];
     }
 }

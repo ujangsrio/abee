@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Filament\Resources\LaporanDataReservasiResource\Pages;
+namespace App\Filament\Resources\LaporanDataReservasiSourceResource\Pages;
+
+
 
 use App\Filament\Resources\LaporanDataReservasiResource;
 use App\Exports\LaporanReservasiExport;
@@ -12,11 +14,9 @@ use Illuminate\Support\Carbon;
 class ListLaporanDataReservasis extends ListRecords
 {
     protected static string $resource = LaporanDataReservasiResource::class;
-
     protected function getHeaderActions(): array
     {
         return [
-            // Export Action
             Actions\Action::make('export_excel')
                 ->label('Export Excel')
                 ->icon('heroicon-o-arrow-down-tray')
@@ -47,7 +47,6 @@ class ListLaporanDataReservasis extends ListRecords
                 ->modalHeading('Export Laporan Reservasi')
                 ->modalSubmitActionLabel('Download Excel'),
 
-            // Export cepat tanpa filter
             Actions\Action::make('export_quick')
                 ->label('Export Semua Data')
                 ->icon('heroicon-o-document-arrow-down')
