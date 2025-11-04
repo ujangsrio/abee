@@ -187,44 +187,72 @@
     <h2>Login</h2>
     
     <!-- Session Messages -->
-    @if(session('success'))
-      <div class="success">{{ session('success') }}</div>
-    @endif
+    <?php if(session('success')): ?>
+      <div class="success"><?php echo e(session('success')); ?></div>
+    <?php endif; ?>
 
-    @if(session('error'))
-      <div class="error">{{ session('error') }}</div>
-    @endif
+    <?php if(session('error')): ?>
+      <div class="error"><?php echo e(session('error')); ?></div>
+    <?php endif; ?>
 
     <!-- Validation Errors -->
-    @if($errors->any())
+    <?php if($errors->any()): ?>
       <div class="error">
-        @foreach($errors->all() as $error)
-          {{ $error }}@if(!$loop->last)<br>@endif
-        @endforeach
+        <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $error): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+          <?php echo e($error); ?><?php if(!$loop->last): ?><br><?php endif; ?>
+        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
       </div>
-    @endif
+    <?php endif; ?>
 
-    <form method="POST" action="{{ route('login.submit') }}" id="loginForm">
-      @csrf
+    <form method="POST" action="<?php echo e(route('login.submit')); ?>" id="loginForm">
+      <?php echo csrf_field(); ?>
       
       <label>Email:</label>
-      <input type="email" name="email" value="{{ old('email') }}" required 
-             class="@error('email') input-error @enderror">
-      @error('email')
-        <span class="error-text">{{ $message }}</span>
-      @enderror
+      <input type="email" name="email" value="<?php echo e(old('email')); ?>" required 
+             class="<?php $__errorArgs = ['email'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> input-error <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>">
+      <?php $__errorArgs = ['email'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+        <span class="error-text"><?php echo e($message); ?></span>
+      <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
 
       <label>Password:</label>
       <input type="password" name="password" required 
-             class="@error('password') input-error @enderror">
-      @error('password')
-        <span class="error-text">{{ $message }}</span>
-      @enderror
+             class="<?php $__errorArgs = ['password'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> input-error <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>">
+      <?php $__errorArgs = ['password'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+        <span class="error-text"><?php echo e($message); ?></span>
+      <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
 
       <button type="submit">Login</button>
 
       <div class="register-link">
-        <a href="{{ route('customer.register') }}">Belum punya akun? Daftar</a>
+        <a href="<?php echo e(route('customer.register')); ?>">Belum punya akun? Daftar</a>
       </div>
     </form>
   </div>
@@ -265,13 +293,13 @@
 
     // Show session messages as notifications
     document.addEventListener('DOMContentLoaded', function() {
-      @if(session('success'))
-        showNotification('{{ session('success') }}', 'success');
-      @endif
+      <?php if(session('success')): ?>
+        showNotification('<?php echo e(session('success')); ?>', 'success');
+      <?php endif; ?>
 
-      @if(session('error'))
-        showNotification('{{ session('error') }}', 'error');
-      @endif
+      <?php if(session('error')): ?>
+        showNotification('<?php echo e(session('error')); ?>', 'error');
+      <?php endif; ?>
 
       // Form submission handling
       const form = document.getElementById('loginForm');
@@ -296,4 +324,4 @@
     });
   </script>
 </body>
-</html>
+</html><?php /**PATH C:\Users\ASVS\Documents\PBL S5\abee\resources\views/auth/login.blade.php ENDPATH**/ ?>
