@@ -58,40 +58,36 @@ class PengaturanResource extends Resource
                     ->columns(1),
 
                 Forms\Components\Section::make('Keamanan Akun')
-                    // DESKRIPSI DIUBAH: Menjelaskan perlu adanya current password
-                    ->description('Untuk mengubah kata sandi, masukkan kata sandi Anda saat ini, diikuti dengan kata sandi baru. Kosongkan jika tidak ingin mengubah.')
-                    ->schema([
-                        // DIKEMBALIKAN: current_password field dan validasinya
-                        Forms\Components\TextInput::make('current_password')
-                            ->label('Kata Sandi Saat Ini')
-                            ->password()
-                            ->requiredWith('new_password')
-                            ->rule('current_password')
-                            ->dehydrated(false)
-                            ->revealable() // <-- Ditambahkan revealable()
-                            ->placeholder('Masukkan kata sandi saat ini'),
+                ->description('Untuk mengubah kata sandi, masukkan kata sandi saat ini dan kata sandi baru. Kosongkan jika tidak ingin mengubah.')
+                ->schema([
+                    Forms\Components\TextInput::make('current_password')
+                        ->label('Kata Sandi Saat Ini')
+                        ->password()
+                        ->requiredWith('new_password')
+                        ->rule('current_password')
+                        ->dehydrated(false)
+                        ->revealable()
+                        ->placeholder('Masukkan kata sandi saat ini'),
 
-                        Forms\Components\TextInput::make('new_password')
-                            ->label('Kata Sandi Baru')
-                            ->password()
-                            ->statePath('password') // <-- PERBAIKAN PENTING: Memetakan ke kolom 'password' model
-                            ->rule(Password::default())
-                            ->minLength(8)
-                            ->same('new_password_confirmation')
-                            ->dehydrated(fn($state) => filled($state))
-                            ->dehydrateStateUsing(fn($state) => filled($state) ? Hash::make($state) : null)
-                            ->revealable() // <-- Ditambahkan revealable()
-                            ->placeholder('Masukkan kata sandi baru (min. 8 karakter)'),
+                    Forms\Components\TextInput::make('new_password')
+                        ->label('Kata Sandi Baru')
+                        ->password()
+                        ->minLength(8)
+                        ->rule('min:8')
+                        ->same('new_password_confirmation')
+                        ->dehydrated(false) 
+                        ->revealable()
+                        ->placeholder('Masukkan kata sandi baru (min. 8 karakter)'),
 
-                        Forms\Components\TextInput::make('new_password_confirmation')
-                            ->label('Konfirmasi Kata Sandi Baru')
-                            ->password()
-                            ->requiredWith('new_password')
-                            ->dehydrated(false)
-                            ->revealable() // <-- Ditambahkan revealable()
-                            ->placeholder('Konfirmasi kata sandi baru'),
-                    ])
-                    ->columns(1),
+                    Forms\Components\TextInput::make('new_password_confirmation')
+                        ->label('Konfirmasi Kata Sandi Baru')
+                        ->password()
+                        ->requiredWith('new_password')
+                        ->dehydrated(false)
+                        ->revealable()
+                        ->placeholder('Konfirmasi kata sandi baru'),
+                ])
+                ->columns(1),
 
                 Forms\Components\Section::make('Informasi Sistem')
                     ->schema([
