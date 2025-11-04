@@ -10,10 +10,9 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model; // <<< DIPERLUKAN UNTUK HOOK handleRecordUpdate
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class LayananResource extends Resource
 {
@@ -29,8 +28,30 @@ class LayananResource extends Resource
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Forms\Components\Section::make('Data Layanan')
+            Forms\Components\Section::make('Informasi Layanan')
                 ->schema([
+                    Forms\Components\FileUpload::make('gambar')
+                        ->label('Gambar Layanan')
+                        ->disk('public')
+                        ->directory('gambar_layanan')
+                        ->image()
+                        ->maxSize(2048)
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg'])
+                        ->helperText('Format: JPEG, PNG, JPG. Maksimal 2MB.')
+                        ->imageResizeMode('cover')
+                        ->imageResizeTargetWidth('600')
+                        ->imageResizeTargetHeight('400')
+                        ->imagePreviewHeight('200')
+                        ->loadingIndicatorPosition('left')
+                        ->panelAspectRatio('2:1')
+                        ->panelLayout('integrated')
+                        ->removeUploadedFileButtonPosition('right')
+                        ->uploadButtonPosition('left')
+                        ->uploadProgressIndicatorPosition('left')
+                        ->columnSpanFull()
+                        ->visibility('public'),
+
+
                     Forms\Components\TextInput::make('nama')
                         ->label('Nama Layanan')
                         ->required()
@@ -39,7 +60,7 @@ class LayananResource extends Resource
 
                     Forms\Components\Textarea::make('deskripsi')
                         ->label('Deskripsi')
-                        ->maxLength(255)
+                        ->maxLength(500)
                         ->rows(3)
                         ->columnSpanFull(),
 
@@ -51,330 +72,276 @@ class LayananResource extends Resource
                         ->prefix('Rp')
                         ->columnSpan(1),
 
-                    Forms\Components\Select::make('promo_id')
-                        ->label('Pilih Promo (Opsional)')
-                        ->relationship(
-                            'promo', 
-                            'nama_promo', 
-                            fn (Builder $query) => $query->whereDate('tanggal_berakhir', '>=', now())
-                        )
-                        ->placeholder('Tidak ada promo yang diterapkan')
-                        ->nullable()
-                        ->searchable()
-                        ->preload()
-                        ->helperText('Pilih promo aktif yang ingin diterapkan.')
+                    Forms\Components\Select::make('kategori')
+                        ->label('Kategori Layanan')
+                        ->options([
+                            'kecantikan' => 'Kecantikan',
+                            'kuku' => 'Perawatan Kuku',
+                            'henna' => 'Henna',
+                            'bulu_mata' => 'Bulu Mata',
+                            'rambut' => 'Rambut',
+                            'lainnya' => 'Lainnya',
+                        ])
+                        ->required()
                         ->columnSpan(1),
 
-                    Forms\Components\FileUpload::make('gambar')
-                        ->label('Gambar Layanan')
-                        ->image()
-                        ->directory('photos')
-                        ->maxSize(2048)
-                        ->imageResizeMode('cover')
-                        ->imageCropAspectRatio('16:9')
-                        ->imageResizeTargetWidth('800')
-                        ->imageResizeTargetHeight('450')
-                        ->columnSpanFull(),
+                    Forms\Components\TextInput::make('estimasi_durasi')
+                        ->label('Estimasi Durasi (menit)')
+                        ->numeric()
+                        ->required()
+                        ->minValue(1)
+                        ->default(60)
+                        ->suffix('menit')
+                        ->columnSpan(1),
+
+                    Forms\Components\TextInput::make('kapasitas_per_slot')
+                        ->label('Kapasitas per Slot')
+                        ->numeric()
+                        ->required()
+                        ->minValue(1)
+                        ->default(1)
+                        ->columnSpan(1),
+
+                    Forms\Components\Select::make('promo_id')
+                        ->label('Promo')
+                        ->relationship('promo', 'nama_promo')
+                        ->placeholder('Tidak ada promo')
+                        ->nullable()
+                        ->columnSpan(2),
                 ])->columns(2),
 
-            Forms\Components\Section::make('Tipe Layanan')
+            Forms\Components\Section::make('Pengaturan Layanan')
                 ->schema([
                     Forms\Components\CheckboxList::make('tipe_layanan')
-                        ->label('Tipe Layanan yang Tersedia')
+                        ->label('Tipe Layanan')
                         ->options([
                             'studio' => 'Studio',
                             'home_service' => 'Home Service',
                         ])
                         ->default(['studio'])
-                        ->columns(1)
-                        ->helperText('Pilih tipe layanan yang tersedia untuk layanan ini.')
-                        ->columnSpanFull(),
-                ]),
+                        ->columns(2)
+                        ->columnSpan(1),
 
-            Forms\Components\Section::make('Jadwal Pelayanan Berulang (Mingguan)')
-                ->description('Atur jam operasional standar yang berulang setiap minggu.')
+                    Forms\Components\Toggle::make('is_active')
+                        ->label('Status Aktif')
+                        ->default(true)
+                        ->helperText('Nonaktifkan jika layanan tidak tersedia')
+                        ->columnSpan(1),
+
+                    Forms\Components\Toggle::make('is_promo')
+                        ->label('Sedang Promo')
+                        ->default(false)
+                        ->columnSpan(1),
+                ])->columns(3),
+
+            Forms\Components\Section::make('Jadwal Operasional')
                 ->schema([
-                    Forms\Components\TimePicker::make('default_start_time')
-                        ->label('Jam Mulai Default')
+                    Forms\Components\DatePicker::make('periode_mulai')
+                        ->label('Periode Mulai')
                         ->required()
-                        ->seconds(false)
-                        ->default('07:00')
                         ->columnSpan(1),
 
-                    Forms\Components\TimePicker::make('default_end_time')
-                        ->label('Jam Selesai Default')
+                    Forms\Components\DatePicker::make('periode_selesai')
+                        ->label('Periode Selesai')
                         ->required()
-                        ->seconds(false)
-                        ->default('16:00')
                         ->columnSpan(1),
 
-                    Forms\Components\CheckboxList::make('available_days')
-                        ->label('Hari Aktif')
+                    Forms\Components\TimePicker::make('jam_buka_default')
+                        ->label('Jam Buka')
+                        ->seconds(false)
+                        ->required()
+                        ->default('08:00')
+                        ->columnSpan(1),
+
+                    Forms\Components\TimePicker::make('jam_tutup_default')
+                        ->label('Jam Tutup')
+                        ->seconds(false)
+                        ->required()
+                        ->default('17:00')
+                        ->columnSpan(1),
+
+                    Forms\Components\CheckboxList::make('hari_operasional')
+                        ->label('Hari Operasional')
                         ->options([
-                            '1' => 'Senin',
-                            '2' => 'Selasa',
-                            '3' => 'Rabu',
-                            '4' => 'Kamis',
-                            '5' => 'Jumat',
-                            '6' => 'Sabtu',
-                            '0' => 'Minggu',
+                            'senin' => 'Senin',
+                            'selasa' => 'Selasa',
+                            'rabu' => 'Rabu',
+                            'kamis' => 'Kamis',
+                            'jumat' => 'Jumat',
+                            'sabtu' => 'Sabtu',
+                            'minggu' => 'Minggu',
                         ])
-                        ->columns(3)
+                        ->default(['senin', 'selasa', 'rabu', 'kamis', 'jumat'])
+                        ->columns(7)
                         ->required()
-                        ->default(['1', '2', '3', '4', '5'])
-                        ->helperText('Pilih hari-hari di mana jam default berlaku.')
                         ->columnSpanFull(),
-                    
                 ])->columns(2),
-            
-            Forms\Components\Section::make('Jadwal Pengecualian (Tanggal Spesifik)')
-                ->description('Atur jam yang berbeda atau hari libur untuk tanggal tertentu. Jadwal ini akan menimpa jadwal mingguan.')
-                ->schema([
-                    Forms\Components\Repeater::make('exception_schedule')
-                        ->label('Daftar Pengecualian Tanggal')
-                        ->schema([
-                            Forms\Components\DatePicker::make('date')
-                                ->label('Tanggal Pengecualian')
-                                ->required()
-                                ->minDate(now())
-                                ->columnSpan(1),
-                            
-                            Forms\Components\TimePicker::make('start_time')
-                                ->label('Jam Mulai Khusus (Kosongkan = Tutup)')
-                                ->seconds(false)
-                                ->nullable()
-                                ->columnSpan(1),
-                            
-                            Forms\Components\TimePicker::make('end_time')
-                                ->label('Jam Selesai Khusus (Kosongkan = Tutup)')
-                                ->seconds(false)
-                                ->nullable()
-                                ->columnSpan(1),
-                        ])
-                        ->columns(3)
-                        ->collapsible()
-                        ->defaultItems(0)
-                        ->helperText('Kosongkan Jam Mulai dan Jam Selesai pada baris pengecualian untuk menandai hari tersebut sebagai TUTUP.')
-                        ->columnSpanFull(),
-                ])
-                ->columnSpanFull(),
         ]);
     }
-
-    // --- LOGIKA LIFECYCLE HOOKS (Memproses Jadwal) ---
-    
-    // Dipanggil saat data dimuat (Halaman Edit)
-    public static function mutateFormDataBeforeFill(array $data): array
-    {
-        $recurring = $data['recurring_schedule'] ?? [];
-
-        if (!empty($recurring) && is_array($recurring)) {
-            $allSchedules = array_values($recurring);
-
-            if (!empty($allSchedules) && is_array($allSchedules[0])) {
-                $firstDaySchedule = $allSchedules[0];
-                $data['default_start_time'] = $firstDaySchedule['start_time'] ?? null;
-                $data['default_end_time'] = $firstDaySchedule['end_time'] ?? null;
-            }
-            
-            $data['available_days'] = array_keys($recurring);
-        }
-        
-        return $data;
-    }
-    
-    // Fungsi pembantu untuk memproses data dari field input menjadi array PHP Layanan (yang akan di-cast Laravel menjadi JSON)
-    protected static function processScheduleData(array $data): array
-    {
-        $recurringSchedule = [];
-        $availableDays = $data['available_days'] ?? [];
-
-        // 1. Menggabungkan Jam Default dan Hari Aktif menjadi recurring_schedule array
-        if (empty($availableDays) || empty($data['default_start_time']) || empty($data['default_end_time'])) {
-            // Jika hari aktif atau jam default kosong, set schedule menjadi array kosong
-            $data['recurring_schedule'] = []; 
-        } else {
-            foreach ($availableDays as $dayOfWeek) {
-                // Kita menyimpan string hari (0-6) sebagai key array untuk Filament
-                $recurringSchedule[(string) $dayOfWeek] = [
-                    'day_of_week' => (int) $dayOfWeek, 
-                    'start_time' => $data['default_start_time'],
-                    'end_time' => $data['default_end_time'],
-                ];
-            }
-            $data['recurring_schedule'] = $recurringSchedule;
-        }
-        
-        // 2. Membersihkan field temporer sebelum disimpan ke database
-        unset($data['default_start_time'], $data['default_end_time'], $data['available_days']);
-        
-        // 3. Pastikan exception_schedule yang diulang juga diproses dan dibersihkan jika diperlukan
-        // exception_schedule biasanya sudah berbentuk array dari form, tetapi ini memastikan konsistensi
-        $data['exception_schedule'] = $data['exception_schedule'] ?? [];
-
-        return $data;
-    }
-
-    // HOOK FALLBACK: Dipanggil sebelum data DISIMPAN (Halaman Edit)
-    public static function mutateFormDataBeforeSave(array $data): array
-    {
-        return self::processScheduleData($data);
-    }
-    
-    // *** HOOK UTAMA UNTUK UPDATE ***
-    // Menimpa proses update default di page/action untuk memastikan data jadwal tersimpan
-    public static function handleRecordUpdate(Model $record, array $data): Model
-    {
-        // Panggil fungsi pemrosesan untuk mendapatkan data jadwal yang benar
-        $processedData = self::processScheduleData($data);
-        
-        // Mengisi model secara eksplisit (membutuhkan $fillable)
-        $record->fill($processedData);
-        $record->save();
-        
-        return $record;
-    }
-
-    // *** HOOK UTAMA UNTUK CREATE ***
-    // Menimpa proses create default di page/action untuk memastikan data jadwal tersimpan
-    public static function handleRecordCreate(array $data): Model
-    {
-        // Panggil fungsi pemrosesan
-        $processedData = self::processScheduleData($data);
-        
-        // Buat dan simpan model
-        $record = static::getModel()::create($processedData);
-        
-        return $record;
-    }
-
-    // --- AKHIR LOGIKA LIFECYCLE HOOKS ---
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('gambar')
+                    ->label('Gambar')
+                    ->disk('public')
+                    ->size(50)
+                    ->defaultImageUrl(function (Layanan $record) {
+                        return $record->getDefaultImageUrl();
+                    })
+                    ->extraImgAttributes([
+                        'alt' => 'Gambar Layanan',
+                        'class' => 'rounded-lg',
+                    ]),
+
+
                 Tables\Columns\TextColumn::make('nama')
                     ->label('Nama Layanan')
                     ->searchable()
-                    ->sortable()
-                    ->description(fn(Layanan $record): string => $record->deskripsi ?: '-')
-                    ->wrap(),
+                    ->sortable(),
 
-                Tables\Columns\TextColumn::make('Jadwal Aktif')
-                    ->label('Jadwal Aktif')
-                    ->getStateUsing(function (Layanan $record): string {
-                        // Karena $casts sudah ada di model, $record->recurring_schedule harusnya array
-                        $schedule = $record->recurring_schedule;
-                        
-                        // Perbaikan Defensif: Jika data bukan array (misal NULL, string) atau kosong
-                        if (!is_array($schedule) || empty($schedule)) {
-                            return 'Tidak Ada Jadwal';
-                        }
-                        
-                        // Konversi keys hari (0-6) ke nama
-                        $hariMap = [
-                            '1' => 'Sen', '2' => 'Sel', '3' => 'Rab', 
-                            '4' => 'Kam', '5' => 'Jum', '6' => 'Sab', '0' => 'Min',
-                        ];
-                        
-                        // Ambil semua hari aktif
-                        $days = array_keys($schedule);
-                        $activeDays = array_map(fn($day) => $hariMap[$day] ?? '', $days);
-                        
-                        // Ambil jam dari jadwal hari pertama yang ditemukan
-                        $firstSchedule = reset($schedule);
-                        $start = $firstSchedule['start_time'] ?? '00:00';
-                        $end = $firstSchedule['end_time'] ?? '00:00';
-                        
-                        // Tampilkan hasil
-                        return implode(', ', $activeDays) . " (" . $start . ' - ' . $end . ')';
-                    })
-                    ->color(fn(Layanan $record) => is_array($record->recurring_schedule) && !empty($record->recurring_schedule) ? 'success' : 'warning')
-                    ->icon(fn(Layanan $record) => is_array($record->recurring_schedule) && !empty($record->recurring_schedule) ? 'heroicon-o-calendar-days' : 'heroicon-o-x-circle')
-                    ->badge(true)
-                    ->tooltip('Jadwal berulang mingguan yang berlaku.'),
-                
+                Tables\Columns\TextColumn::make('kategori')
+                    ->label('Kategori')
+                    ->badge()
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('harga')
                     ->label('Harga')
                     ->money('IDR')
-                    ->sortable()
-                    ->toggleable(),
-                
-                Tables\Columns\TextColumn::make('promo.nama_promo')
-                    ->label('Promo Diterapkan')
-                    ->badge()
-                    ->color('warning')
-                    ->placeholder('Tidak Ada Promo')
-                    ->sortable()
-                    ->toggleable(),
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('jadwal_operasional')
+                    ->label('Jadwal Operasional')
+                    ->getStateUsing(function ($record) {
+                        $waktuOperasional = $record->waktu_operasional;
+
+                        if (empty($waktuOperasional) || !is_array($waktuOperasional)) {
+                            return 'Belum diatur';
+                        }
+
+                        $hariOperasional = $waktuOperasional['hari_operasional'] ?? [];
+                        $jamBuka = $waktuOperasional['jam_buka_default'] ?? '08:00';
+                        $jamTutup = $waktuOperasional['jam_tutup_default'] ?? '17:00';
+
+                        if (empty($hariOperasional)) {
+                            return 'Tidak ada jadwal';
+                        }
+
+                        $hariMap = [
+                            'senin' => 'Sen',
+                            'selasa' => 'Sel',
+                            'rabu' => 'Rab',
+                            'kamis' => 'Kam',
+                            'jumat' => 'Jum',
+                            'sabtu' => 'Sab',
+                            'minggu' => 'Min',
+                        ];
+
+                        $hariSingkat = collect($hariOperasional)
+                            ->map(function ($hari) use ($hariMap) {
+                                return $hariMap[$hari] ?? ucfirst(substr($hari, 0, 3));
+                            })
+                            ->implode(', ');
+
+                        return $hariSingkat . ' (' . $jamBuka . ' - ' . $jamTutup . ')';
+                    })
+                    ->description(function ($record) {
+                        $waktuOperasional = $record->waktu_operasional;
+
+                        if (empty($waktuOperasional) || !is_array($waktuOperasional)) {
+                            return null;
+                        }
+
+                        $periodeMulai = $waktuOperasional['periode_mulai'] ?? null;
+                        $periodeSelesai = $waktuOperasional['periode_selesai'] ?? null;
+
+                        if ($periodeMulai && $periodeSelesai) {
+                            return \Carbon\Carbon::parse($periodeMulai)->format('d/m/Y') . ' - ' .
+                                \Carbon\Carbon::parse($periodeSelesai)->format('d/m/Y');
+                        }
+
+                        return 'Periode tidak ditentukan';
+                    })
+                    ->wrap()
+                    ->limit(50)
+                    ->tooltip(function ($record) {
+                        $waktuOperasional = $record->waktu_operasional;
+
+                        if (empty($waktuOperasional) || !is_array($waktuOperasional)) {
+                            return 'Jadwal operasional belum diatur';
+                        }
+
+                        $hariOperasional = $waktuOperasional['hari_operasional'] ?? [];
+                        $jamBuka = $waktuOperasional['jam_buka_default'] ?? '08:00';
+                        $jamTutup = $waktuOperasional['jam_tutup_default'] ?? '17:00';
+                        $periodeMulai = $waktuOperasional['periode_mulai'] ?? null;
+                        $periodeSelesai = $waktuOperasional['periode_selesai'] ?? null;
+
+                        $tooltip = "Jam Operasional: " . $jamBuka . " - " . $jamTutup . "\n";
+                        $tooltip .= "Hari: " . implode(', ', $hariOperasional) . "\n";
+
+                        if ($periodeMulai && $periodeSelesai) {
+                            $tooltip .= "Periode: " . \Carbon\Carbon::parse($periodeMulai)->format('d/m/Y') .
+                                " - " . \Carbon\Carbon::parse($periodeSelesai)->format('d/m/Y');
+                        }
+
+                        return $tooltip;
+                    }),
+
+                Tables\Columns\IconColumn::make('is_active')
+                    ->label('Status')
+                    ->boolean()
+                    ->sortable(),
 
                 Tables\Columns\TagsColumn::make('tipe_layanan')
                     ->label('Tipe Layanan')
                     ->getStateUsing(function ($record) {
-                        if (!$record->tipe_layanan) return [];
-                        return array_map(fn ($type) => match ($type) {
-                            'studio' => 'Studio',
-                            'home_service' => 'Home Service', 
-                            default => ucfirst($type),
-                        }, (array) $record->tipe_layanan);
-                    })
-                    ->toggleable(),
-                
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Dibuat')
-                    ->date('d-m-y')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                        $tipeLayanan = $record->tipe_layanan;
+                        if (is_string($tipeLayanan)) {
+                            $tipeLayanan = json_decode($tipeLayanan, true);
+                        }
+                        return is_array($tipeLayanan) ? $tipeLayanan : [];
+                    }),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('tipe_layanan')
-                    ->label('Tipe Layanan')
+                Tables\Filters\SelectFilter::make('kategori')
                     ->options([
-                        'studio' => 'Studio',
-                        'home_service' => 'Home Service',
+                        'kecantikan' => 'Kecantikan',
+                        'kuku' => 'Perawatan Kuku',
+                        'henna' => 'Henna',
+                        'bulu_mata' => 'Bulu Mata',
+                        'rambut' => 'Rambut',
+                        'lainnya' => 'Lainnya',
+                    ]),
+
+                Tables\Filters\TernaryFilter::make('is_active')
+                    ->label('Status Aktif'),
+
+                // Filter berdasarkan hari operasional
+                Tables\Filters\SelectFilter::make('hari_operasional')
+                    ->label('Hari Operasional')
+                    ->options([
+                        'senin' => 'Senin',
+                        'selasa' => 'Selasa',
+                        'rabu' => 'Rabu',
+                        'kamis' => 'Kamis',
+                        'jumat' => 'Jumat',
+                        'sabtu' => 'Sabtu',
+                        'minggu' => 'Minggu',
                     ])
-                    ->multiple(),
-
-                Tables\Filters\TernaryFilter::make('promo_id')
-                    ->label('Status Promo')
-                    ->nullable()
-                    ->placeholder('Semua Layanan')
-                    ->trueLabel('Ada Promo Diterapkan')
-                    ->falseLabel('Tidak Ada Promo')
-                    ->queries(
-                        true: fn (Builder $query) => $query->whereNotNull('promo_id'),
-                        false: fn (Builder $query) => $query->whereNull('promo_id'),
-                    ),
-
-                Tables\Filters\TrashedFilter::make(),
+                    ->query(function (Builder $query, array $data) {
+                        if (!empty($data['value'])) {
+                            $query->whereJsonContains('waktu_operasional->hari_operasional', $data['value']);
+                        }
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
-                Tables\Actions\ForceDeleteAction::make(),
-                Tables\Actions\RestoreAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\ForceDeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
-                ]),
-            ])
-            ->emptyStateActions([
-                Tables\Actions\CreateAction::make(),
-            ])
-            ->defaultSort('created_at', 'desc');
+            ]);
     }
 
-    public static function getRelations(): array
-    {
-        return [];
-    }
-    
-    // getPages tidak perlu diubah, karena Filament akan otomatis memanggil handleRecordCreate/Update 
-    // jika didefinisikan di Resource, asalkan page yang digunakan adalah default.
     public static function getPages(): array
     {
         return [
@@ -390,15 +357,5 @@ class LayananResource extends Resource
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
-    }
-
-    public static function getNavigationBadge(): ?string
-    {
-        return static::getModel()::count();
-    }
-
-    public static function getNavigationBadgeColor(): string|array|null
-    {
-        return 'success';
     }
 }

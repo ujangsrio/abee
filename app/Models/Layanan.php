@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Layanan extends Model
 {
@@ -16,46 +16,114 @@ class Layanan extends Model
         'harga',
         'deskripsi',
         'gambar',
+        'durasi',
         'total_dipesan',
         'is_promo',
-        'tipe_layanan', 
-        'promo_id', 
-        'recurring_schedule', // Wajib untuk Jadwal Berulang
-        'exception_schedule', // Wajib untuk Jadwal Pengecualian
+        'is_active',
+        'kategori',
+        'estimasi_durasi',
+        'kapasitas_per_slot',
+        'tipe_layanan',
+        'waktu_operasional',
+        'jadwal_khusus',
+        'promo_id',
+        'persyaratan',
+        'catatan',
     ];
 
-    /**
-     * Casting wajib agar kolom JSON (Repeater/CheckboxList) dan tipe data lainnya
-     * dapat disimpan dan dibaca kembali dengan benar.
-     */
     protected $casts = [
-        // Casting untuk data array/JSON dari Filament:
         'tipe_layanan' => 'array',
-        'recurring_schedule' => 'array',
-        'exception_schedule' => 'array',
-        
-        // Casting dari model sebelumnya yang masih relevan:
+        'waktu_operasional' => 'array',
+        'jadwal_khusus' => 'array',
+        'is_active' => 'boolean',
         'is_promo' => 'boolean',
-        'harga' => 'integer',
-        'total_dipesan' => 'integer',
+        'harga' => 'decimal:2',
     ];
 
-    public function promo(): BelongsTo
+    // Accessor untuk gambar URL
+    public function getGambarUrlAttribute()
     {
-        return $this->belongsTo(Promo::class, 'promo_id');
+        if (!$this->gambar) {
+            return $this->getDefaultImageUrl();
+        }
+
+        // Cek jika path sudah mengandung 'storage/', jika ya langsung return
+        if (strpos($this->gambar, 'storage/') !== false) {
+            return asset($this->gambar);
+        }
+
+        // Jika path relatif, tambahkan 'storage/'
+        return asset('storage/' . $this->gambar);
     }
 
-    public function slots()
+    // Method untuk default image
+    public function getDefaultImageUrl()
     {
-        // Relasi ke slot dipertahankan
-        return $this->hasMany(Slot::class);
+        $initial = strtoupper(substr($this->nama, 0, 1));
+        return "https://ui-avatars.com/api/?name={$initial}&color=FFFFFF&background=8B5CF6&size=300&bold=true";
     }
 
-    public function customerBookings()
+    // Method untuk cek apakah gambar ada
+    public function hasGambar()
+    {
+        return $this->gambar && Storage::disk('public')->exists($this->gambar);
+    }
+
+    // Method untuk handle waktu operasional
+    public function setWaktuOperasionalAttribute($value)
+    {
+        if (is_array($value)) {
+            $this->attributes['waktu_operasional'] = json_encode($value);
+        } else {
+            $this->attributes['waktu_operasional'] = $value;
+        }
+    }
+
+    public function getWaktuOperasionalAttribute($value)
+    {
+        if (is_string($value)) {
+            return json_decode($value, true) ?? [];
+        }
+
+        return $value ?? [];
+    }
+
+    // Relation methods
+    public function promo()
+    {
+        return $this->belongsTo(Promo::class);
+    }
+
+    public function jadwalBulanan()
+    {
+        return $this->hasMany(LayananJadwalBulanan::class);
+    }
+
+    public function jadwalPengecualian()
+    {
+        return $this->hasMany(LayananJadwalPengecualian::class);
+    }
+
+    public function bookings()
     {
         return $this->hasMany(CustomerBooking::class, 'service_id');
     }
 
-    // CATATAN PENTING: Fungsi boot() dan autoCreateOrUpdateSlot()
-    // TELAH DIHAPUS TOTAL untuk menyelesaikan error BadMethodCallException.
+    public function slots()
+    {
+        return $this->hasMany(Slot::class);
+    }
+
+    // Boot method untuk handle delete
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function ($layanan) {
+            // Hapus gambar saat delete - PERBAIKAN: pastikan path sesuai
+            if ($layanan->gambar && Storage::disk('public')->exists($layanan->gambar)) {
+                Storage::disk('public')->delete($layanan->gambar);
+            }
+        });
+    }
 }

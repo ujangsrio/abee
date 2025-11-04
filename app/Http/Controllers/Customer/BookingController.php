@@ -11,56 +11,105 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class BookingController extends Controller
 {
-    public function create()
+    public function create(Request $request)
     {
         try {
-            // Ambil layanan yang aktif dengan slot tersedia
-            $layananWithSlots = Layanan::whereHas('slots', function ($query) {
-                $query->where('tanggal', '>=', now()->format('Y-m-d'));
-            })
-                // Eager load promo agar perhitungan biaya di frontend lebih akurat
-                ->with(['slots' => function ($query) {
-                    $query->where('tanggal', '>=', now()->format('Y-m-d'))
-                        ->orderBy('tanggal')
-                        ->orderBy('jam');
-                }, 'promo']) // <-- Tambah eager load 'promo'
-                ->get();
+            $selectedService = null;
+            $availableDates = [];
 
-            // Format data untuk dropdown
-            $tanggalJam = [];
-            foreach ($layananWithSlots as $layanan) {
-                foreach ($layanan->slots as $slot) {
-                    $tanggal = is_object($slot->tanggal) ? $slot->tanggal->format('Y-m-d') : $slot->tanggal;
+            // Jika ada service_id dari card layanan
+            if ($request->has('service_id')) {
+                $selectedService = Layanan::with('promo')->find($request->service_id);
 
-                    if (!isset($tanggalJam[$tanggal])) {
-                        $tanggalJam[$tanggal] = [];
-                    }
+                if ($selectedService) {
+                    // Parse jadwal operasional
+                    $waktuOperasional = $selectedService->waktu_operasional;
+                    $hariOperasional = [];
+                    $jamBukaDefault = '08:00';
+                    $jamTutupDefault = '17:00';
 
-                    $exists = false;
-                    foreach ($tanggalJam[$tanggal] as $existingLayanan) {
-                        if ($existingLayanan->id === $layanan->id) {
-                            $exists = true;
-                            break;
+                    if ($waktuOperasional && is_array($waktuOperasional)) {
+                        $hariOperasional = $waktuOperasional['hari_operasional'] ?? [];
+                        $jamBukaDefault = $waktuOperasional['jam_buka_default'] ?? '08:00';
+                        $jamTutupDefault = $waktuOperasional['jam_tutup_default'] ?? '17:00';
+                    } elseif (is_string($waktuOperasional)) {
+                        try {
+                            $decoded = json_decode($waktuOperasional, true);
+                            if ($decoded) {
+                                $hariOperasional = $decoded['hari_operasional'] ?? [];
+                                $jamBukaDefault = $decoded['jam_buka_default'] ?? '08:00';
+                                $jamTutupDefault = $decoded['jam_tutup_default'] ?? '17:00';
+                            }
+                        } catch (\Exception $e) {
+                            Log::error('Error parsing waktu operasional: ' . $e->getMessage());
                         }
                     }
 
-                    if (!$exists) {
-                        $tanggalJam[$tanggal][] = $layanan;
+                    // Map hari Indonesia
+                    $hariMap = [
+                        'senin' => 'Sen',
+                        'selasa' => 'Sel',
+                        'rabu' => 'Rab',
+                        'kamis' => 'Kam',
+                        'jumat' => 'Jum',
+                        'sabtu' => 'Sab',
+                        'minggu' => 'Min'
+                    ];
+
+                    // Map hari Indonesia ke Inggris untuk Carbon
+                    $dayMapping = [
+                        'senin' => 'monday',
+                        'selasa' => 'tuesday',
+                        'rabu' => 'wednesday',
+                        'kamis' => 'thursday',
+                        'jumat' => 'friday',
+                        'sabtu' => 'saturday',
+                        'minggu' => 'sunday'
+                    ];
+
+                    // Generate available dates berdasarkan hari operasional
+                    $startDate = Carbon::now();
+                    $endDate = Carbon::now()->addDays(30); // 30 hari ke depan
+
+                    for ($date = $startDate; $date->lte($endDate); $date->addDay()) {
+                        $dayName = strtolower($date->format('l'));
+                        $dayNameIndo = array_search($dayName, $dayMapping);
+
+                        if (in_array($dayNameIndo, $hariOperasional)) {
+                            $hariSingkat = $hariMap[$dayNameIndo] ?? 'Sen';
+
+                            $availableDates[$date->format('Y-m-d')] = [
+                                'hari_singkat' => $hariSingkat,
+                                'jam_buka' => $jamBukaDefault,
+                                'jam_tutup' => $jamTutupDefault,
+                                'tanggal_format' => $date->format('d M Y')
+                            ];
+                        }
+                    }
+
+                    // Jika tidak ada tanggal yang tersedia, beri pesan
+                    if (empty($availableDates)) {
+                        Log::warning('Tidak ada tanggal tersedia untuk layanan: ' . $selectedService->nama);
                     }
                 }
             }
 
-            ksort($tanggalJam);
+            if (!$selectedService) {
+                return redirect()->route('customer.layanan')
+                    ->with('error', 'Silakan pilih layanan terlebih dahulu.');
+            }
 
-            return view('customer.booking.create', compact('tanggalJam'));
+            return view('customer.booking.create', compact('selectedService', 'availableDates'));
         } catch (\Exception $e) {
             Log::error('Error in BookingController@create: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan saat memuat form booking.');
+            return back()->with('error', 'Terjadi kesalahan saat memuat form booking: ' . $e->getMessage());
         }
     }
+
 
     public function availableTimes(Request $request)
     {
@@ -73,29 +122,102 @@ class BookingController extends Controller
             $serviceId = $request->service_id;
             $tanggal = $request->tanggal;
 
-            $availableSlots = Slot::where('layanan_id', $serviceId)
-                ->where('tanggal', $tanggal)
-                ->whereNotExists(function ($query) use ($serviceId, $tanggal) {
-                    $query->select(DB::raw(1))
-                        ->from('customer_bookings')
-                        ->whereColumn('customer_bookings.service_id', 'slots.layanan_id')
-                        ->where('customer_bookings.date', $tanggal)
-                        ->whereColumn('customer_bookings.time', 'slots.jam')
-                        ->whereIn('customer_bookings.status', ['Menunggu', 'Dikonfirmasi']);
-                })
-                ->get()
-                ->map(function ($slot) {
-                    return [
-                        'jam' => \Carbon\Carbon::parse($slot->jam)->format('H:i')
+            // Ambil layanan untuk mendapatkan jadwal operasional
+            $layanan = Layanan::find($serviceId);
+            $waktuOperasional = $layanan->waktu_operasional;
+
+            $jamBukaDefault = '08:00';
+            $jamTutupDefault = '17:00';
+
+            if ($waktuOperasional && is_array($waktuOperasional)) {
+                $jamBukaDefault = $waktuOperasional['jam_buka_default'] ?? '08:00';
+                $jamTutupDefault = $waktuOperasional['jam_tutup_default'] ?? '17:00';
+            }
+
+            // Generate time slots berdasarkan jam operasional
+            $availableSlots = [];
+            $startTime = Carbon::createFromTimeString($jamBukaDefault);
+            $endTime = Carbon::createFromTimeString($jamTutupDefault);
+
+            // Buat slot setiap 30 menit
+            for ($time = $startTime; $time->lt($endTime); $time->addMinutes(30)) {
+                $slotTime = $time->format('H:i');
+
+                // Cek apakah slot tersedia (tidak ada booking yang bentrok)
+                $isAvailable = !CustomerBooking::where('service_id', $serviceId)
+                    ->where('date', $tanggal)
+                    ->where('time', $slotTime)
+                    ->whereIn('status', ['Menunggu', 'Dikonfirmasi'])
+                    ->exists();
+
+                if ($isAvailable) {
+                    $availableSlots[] = [
+                        'jam' => $slotTime,
+                        'formatted' => $slotTime
                     ];
-                });
+                }
+            }
 
             return response()->json($availableSlots);
         } catch (\Exception $e) {
             Log::error('Error in availableTimes: ' . $e->getMessage());
-            return response()->json([], 500);
+            return response()->json(['error' => 'Gagal memuat jam tersedia'], 500);
         }
     }
+
+    public function availableTimesByDate(Request $request)
+    {
+        try {
+            $request->validate([
+                'service_id' => 'required|exists:layanans,id',
+                'tanggal' => 'required|date'
+            ]);
+
+            $serviceId = $request->service_id;
+            $tanggal = $request->tanggal;
+
+            // Ambil layanan untuk mendapatkan jadwal operasional
+            $layanan = Layanan::find($serviceId);
+            $waktuOperasional = $layanan->waktu_operasional;
+
+            $jamBukaDefault = '08:00';
+            $jamTutupDefault = '17:00';
+
+            if ($waktuOperasional && is_array($waktuOperasional)) {
+                $jamBukaDefault = $waktuOperasional['jam_buka_default'] ?? '08:00';
+                $jamTutupDefault = $waktuOperasional['jam_tutup_default'] ?? '17:00';
+            }
+
+            // Generate time slots
+            $availableSlots = [];
+            $startTime = Carbon::createFromTimeString($jamBukaDefault);
+            $endTime = Carbon::createFromTimeString($jamTutupDefault);
+
+            for ($time = $startTime; $time->lt($endTime); $time->addMinutes(30)) {
+                $slotTime = $time->format('H:i');
+
+                $isAvailable = !CustomerBooking::where('service_id', $serviceId)
+                    ->where('date', $tanggal)
+                    ->where('time', $slotTime)
+                    ->whereIn('status', ['Menunggu', 'Dikonfirmasi'])
+                    ->exists();
+
+                if ($isAvailable) {
+                    $availableSlots[] = [
+                        'jam' => $slotTime,
+                        'formatted' => $slotTime
+                    ];
+                }
+            }
+
+            return response()->json($availableSlots);
+        } catch (\Exception $e) {
+            Log::error('Error in availableTimesByDate: ' . $e->getMessage());
+            return response()->json(['error' => 'Gagal memuat jam tersedia'], 500);
+        }
+    }
+
+
 
     public function calculateTotalCost(Request $request)
     {
@@ -115,7 +237,7 @@ class BookingController extends Controller
             // --- LOGIKA PERHITUNGAN DISKON BARU (Menggunakan Relasi Promo) ---
             if ($layanan->promo) {
                 $promo = $layanan->promo;
-                
+
                 // Pastikan promo belum kadaluarsa (jika ada tanggal berakhir)
                 if (!$promo->tanggal_berakhir || now()->lt($promo->tanggal_berakhir)) {
                     // Asumsi $promo->diskon adalah persentase (misal 10 untuk 10%)
@@ -139,7 +261,6 @@ class BookingController extends Controller
                         $serviceType = $decoded;
                     }
                 } catch (\Exception $e) {
-                    // Tetap gunakan string asli
                 }
             }
 
@@ -154,11 +275,11 @@ class BookingController extends Controller
             return response()->json([
                 'service_name' => $layanan->nama,
                 'base_price' => $basePrice,
-                'discount' => (int) $discount, // Pastikan integer
+                'discount' => (int) $discount, 
                 'promo_name' => $promoName,
-                'total_after_discount' => (int) $totalAfterDiscount, // Pastikan integer
+                'total_after_discount' => (int) $totalAfterDiscount, 
                 'dp' => $dp,
-                'remaining_payment' => (int) $remainingPayment, // Pastikan integer
+                'remaining_payment' => (int) $remainingPayment, 
                 'service_type' => $serviceType
             ]);
         } catch (\Exception $e) {
@@ -182,13 +303,13 @@ class BookingController extends Controller
             'service_id.required' => 'Silakan pilih layanan dan tanggal terlebih dahulu.',
             'time.required' => 'Silakan pilih layanan dan tanggal terlebih dahulu.',
             'tanggal.required' => 'Silakan pilih layanan dan tanggal terlebih dahulu.',
-            
+
             // Case 4: Tanpa upload bukti pembayaran
             'bukti_transfer.required' => 'Bukti pembayaran wajib diunggah',
-            
+
             // Case 2: Ukuran file melebihi batas
             'bukti_transfer.max' => 'Ukuran file maksimal 2MB',
-            
+
             // Case 3: Format file tidak valid
             'bukti_transfer.mimes' => 'Format file tidak valid',
         ]);
@@ -244,7 +365,7 @@ class BookingController extends Controller
 
             $bookings = CustomerBooking::with(['service' => function ($query) {
                 // Pastikan promo_id dimuat
-                $query->select('id', 'nama', 'harga', 'deskripsi', 'gambar', 'tipe_layanan', 'promo_id'); 
+                $query->select('id', 'nama', 'harga', 'deskripsi', 'gambar', 'tipe_layanan', 'promo_id');
             }, 'service.promo']) // <-- Eager load relasi Promo
                 ->where('customer_id', $customerProfile->id)
                 ->whereNotIn('status', ['Selesai', 'Dibatalkan'])
@@ -351,38 +472,6 @@ class BookingController extends Controller
         }
     }
 
-    public function availableTimesByDate(Request $request)
-    {
-        try {
-            $request->validate([
-                'service_id' => 'required|exists:layanans,id',
-                'tanggal' => 'required|date'
-            ]);
-
-            $availableSlots = Slot::where('layanan_id', $request->service_id)
-                ->where('tanggal', $request->tanggal)
-                ->whereNotExists(function ($query) use ($request) {
-                    $query->select(DB::raw(1))
-                        ->from('customer_bookings')
-                        ->whereColumn('customer_bookings.service_id', 'slots.layanan_id')
-                        ->where('customer_bookings.date', $request->tanggal)
-                        ->whereColumn('customer_bookings.time', 'slots.jam')
-                        ->whereIn('customer_bookings.status', ['Menunggu', 'Dikonfirmasi']);
-                })
-                ->get()
-                ->map(function ($slot) {
-                    return [
-                        'jam' => \Carbon\Carbon::parse($slot->jam)->format('H:i')
-                    ];
-                });
-
-            return response()->json($availableSlots);
-        } catch (\Exception $e) {
-            Log::error('Error in availableTimesByDate: ' . $e->getMessage());
-            return response()->json([], 500);
-        }
-    }
-
     /**
      * Hitung informasi biaya untuk booking
      */
@@ -395,7 +484,7 @@ class BookingController extends Controller
         // --- LOGIKA PERHITUNGAN DISKON BARU (Menggunakan Relasi Promo) ---
         if ($booking->service && $booking->service->promo) {
             $promo = $booking->service->promo;
-            
+
             // Cek tanggal berakhir promo (asumsi Promo model memiliki 'tanggal_berakhir')
             if (!$promo->tanggal_berakhir || now()->lt($promo->tanggal_berakhir)) {
                 $diskonPersen = $promo->diskon ?? 0;

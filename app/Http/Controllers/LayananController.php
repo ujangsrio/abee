@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Layanan;
 use App\Models\Promo;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class LayananController extends Controller
 {
@@ -22,42 +24,30 @@ class LayananController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'nama' => 'required|string|max:255',
-            'harga' => 'required|numeric',
-            'tanggal' => 'required|date|after_or_equal:today',
-            'deskripsi' => 'required|string|max:255',
-            'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'promo_id' => 'nullable|exists:promos,id',
-            'tipe_layanan' => 'required|array|min:1',
-            'tipe_layanan.*' => 'required|in:studio,home_service',
-            'slots' => 'required|array|min:1',
-            'slots.*' => 'required|date_format:H:i',
+            'harga' => 'required|numeric|min:0',
+            'deskripsi' => 'nullable|string|max:500',
+            'kategori' => 'required|string|max:100',
+            'gambar' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        $gambar = null;
-        if ($request->hasFile('gambar')) {
-            $gambar = $request->file('gambar')->store('photos', 'public');
+        try {
+            // Upload gambar jika ada - PERBAIKAN: gunakan directory gambar_layanan
+            if ($request->hasFile('gambar')) {
+                $file = $request->file('gambar');
+                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('gambar_layanan', $filename, 'public');
+                $validated['gambar'] = $path; // Simpan path relatif
+            }
+
+            Layanan::create($validated);
+
+            return redirect()->route('admin.layanan.index')->with('success', 'Layanan berhasil ditambahkan.');
+        } catch (\Exception $e) {
+            Log::error('Error storing layanan: ' . $e->getMessage());
+            return back()->with('error', 'Gagal menambahkan layanan: ' . $e->getMessage());
         }
-
-        $layanan = Layanan::create([
-            'nama' => $request->nama,
-            'harga' => $request->harga,
-            'tanggal' => $request->tanggal,
-            'deskripsi' => $request->deskripsi,
-            'gambar' => $gambar ? basename($gambar) : null,
-            'promo_id' => $request->promo_id,
-            'tipe_layanan' => $request->tipe_layanan,
-        ]);
-
-        foreach ($request->slots as $jam) {
-            $layanan->slots()->create([
-                'jam' => $jam,
-                'tanggal' => $layanan->tanggal,
-            ]);
-        }
-
-        return redirect()->route('admin.layanan.index')->with('success', 'Layanan dan slot berhasil ditambahkan.');
     }
 
     public function edit(Layanan $layanan)
@@ -67,79 +57,73 @@ class LayananController extends Controller
         return view('admin.layanan.edit', compact('layanan', 'promos'));
     }
 
-    public function update(Request $request, Layanan $layanan)
+    public function update(Request $request, $id)
     {
-        $request->merge([
-            'slots' => array_map(fn($jam) => substr($jam, 0, 5), $request->slots ?? []),
-        ]);
+        $layanan = Layanan::findOrFail($id);
 
-        $request->validate([
+        $validated = $request->validate([
             'nama' => 'required|string|max:255',
-            'harga' => 'required|numeric',
-            'tanggal' => 'required|date|after_or_equal:today',
-            'deskripsi' => 'required|string|max:255',
-            'gambar' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'promo_id' => 'nullable|exists:promos,id',
-            'tipe_layanan' => 'required|array|min:1',
-            'tipe_layanan.*' => 'required|in:studio,home_service',
-            'slots' => 'required|array|min:1',
-            'slots.*' => ['required', 'date_format:H:i'],
-            'slot_ids' => 'nullable|array',
+            'harga' => 'required|numeric|min:0',
+            'deskripsi' => 'nullable|string|max:500',
+            'kategori' => 'required|string|max:100',
+            'gambar' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        $layanan->update([
-            'nama' => $request->nama,
-            'harga' => $request->harga,
-            'tanggal' => $request->tanggal,
-            'deskripsi' => $request->deskripsi,
-            'promo_id' => $request->promo_id,
-            'tipe_layanan' => $request->tipe_layanan,
-        ]);
-
-        // Update Gambar
-        if ($request->hasFile('gambar')) {
-            $gambarBaru = $request->file('gambar')->store('photos', 'public');
-            if ($layanan->gambar && file_exists(storage_path('app/public/photos/' . $layanan->gambar))) {
-                unlink(storage_path('app/public/photos/' . $layanan->gambar));
-            }
-            $layanan->gambar = basename($gambarBaru);
-            $layanan->save();
-        }
-
-        // Update Slot
-        $slotIdsFromForm = $request->slot_ids ?? [];
-        $newSlots = $request->slots;
-
-        // Hapus slot yang tidak ada di form
-        $layanan->slots()->whereNotIn('id', $slotIdsFromForm)->delete();
-
-        foreach ($newSlots as $index => $jam) {
-            $id = $slotIdsFromForm[$index] ?? null;
-            if ($id) {
-                $slot = $layanan->slots()->where('id', $id)->first();
-                if ($slot) {
-                    $slot->update(['jam' => $jam, 'tanggal' => $layanan->tanggal]);
+        try {
+            // Hapus gambar lama jika ada gambar baru - PERBAIKAN: gunakan directory gambar_layanan
+            if ($request->hasFile('gambar')) {
+                // Hapus gambar lama jika ada
+                if ($layanan->gambar && Storage::disk('public')->exists($layanan->gambar)) {
+                    Storage::disk('public')->delete($layanan->gambar);
+                    Log::info('Gambar layanan lama dihapus: ' . $layanan->gambar);
                 }
-            } else {
-                $layanan->slots()->create([
-                    'jam' => $jam,
-                    'tanggal' => $layanan->tanggal,
-                ]);
-            }
-        }
 
-        return redirect()->route('admin.layanan.index')->with('success', 'Layanan dan slot berhasil diperbarui.');
+                // Upload gambar baru
+                $file = $request->file('gambar');
+                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('gambar_layanan', $filename, 'public'); // Update directory
+                $validated['gambar'] = $path;
+                Log::info('Gambar layanan baru diupload: ' . $path);
+            }
+
+            $layanan->update($validated);
+
+            return redirect()->route('admin.layanan.index')->with('success', 'Layanan berhasil diperbarui.');
+        } catch (\Exception $e) {
+            Log::error('Error updating layanan: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memperbarui layanan: ' . $e->getMessage());
+        }
     }
 
     public function destroy(Layanan $layanan)
     {
-        if ($layanan->gambar && file_exists(storage_path('app/public/photos/' . $layanan->gambar))) {
-            unlink(storage_path('app/public/photos/' . $layanan->gambar));
+        try {
+            // Hapus gambar jika ada - PERBAIKAN: gunakan directory gambar_layanan
+            if ($layanan->gambar && Storage::disk('public')->exists($layanan->gambar)) {
+                Storage::disk('public')->delete($layanan->gambar);
+                Log::info('Gambar layanan dihapus saat destroy: ' . $layanan->gambar);
+            }
+
+            $layanan->slots()->delete();
+            $layanan->delete();
+
+            return redirect()->route('admin.layanan.index')
+                ->with('success', 'Layanan berhasil dihapus.');
+        } catch (\Exception $e) {
+            Log::error('Error in destroy layanan: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get image URL for display
+     */
+    public function getImageUrl($gambarPath)
+    {
+        if (!$gambarPath) {
+            return null;
         }
 
-        $layanan->slots()->delete();
-        $layanan->delete();
-
-        return redirect()->route('admin.layanan.index')->with('success', 'Layanan berhasil dihapus.');
+        return asset('storage/' . $gambarPath);
     }
 }

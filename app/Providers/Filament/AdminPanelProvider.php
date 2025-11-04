@@ -34,16 +34,15 @@ class AdminPanelProvider extends PanelProvider
             ->font('Poppins')
             ->id('admin')
             ->path('admin')
-            ->authGuard('admin') 
+            ->authGuard('admin')
             ->login()
             ->colors([
-                // 'primary' => Color::Emerald,
-            // 'danger' => Color::Rose,
-            // 'gray' => Color::Gray,
-            // 'info' => Color::Blue,
-            // 'primary' => Color::Indigo,
-            'success' => Color::Emerald,
-            // 'warning' => Color::Orange,
+                'primary' => Color::hex('#8B5CF6'), // Purple
+                'danger' => Color::hex('#EF4444'),
+                'gray' => Color::Zinc,
+                'info' => Color::hex('#06B6D4'),
+                'success' => Color::hex('#10B981'),
+                'warning' => Color::hex('#F59E0B'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
@@ -54,7 +53,7 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 StatsOverview::class,
                 ReservasiChart::class,
-                PendapatanChart::class, 
+                PendapatanChart::class,
                 PelangganChart::class,
             ])
             ->middleware([

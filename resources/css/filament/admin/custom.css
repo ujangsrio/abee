@@ -1,0 +1,18 @@
+/* Custom styling untuk table Aretha Beauty */
+.filament-tables-header-cell {
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    font-size: 0.75rem !important;
+    letter-spacing: 0.05em !important;
+}
+
+.filament-tables-cell {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+}
+
+/* Compact view */
+.filament-tables-container {
+    border-radius: 0.5rem !important;
+    overflow: hidden !important;
+}
