@@ -2,6 +2,7 @@
 <?php
     use Illuminate\Support\Facades\Auth;
     use Illuminate\Support\Facades\Storage;
+    use Carbon\Carbon;
     
     $user = Auth::guard('customer')->user();
     $isMember = $user && $user->customer && $user->customer->is_member;
@@ -18,6 +19,7 @@
         height: 100%;
         display: flex;
         flex-direction: column;
+        position: relative;
     }
 
     .layanan-card:hover {
@@ -150,6 +152,60 @@
         background: #fecaca;
         color: #dc2626;
     }
+
+    /* Styles untuk promo badge */
+    .promo-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-size: 10px;
+        font-weight: 700;
+        z-index: 2;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        animation: pulse 2s infinite;
+    }
+
+    .promo-ribbon {
+        position: absolute;
+        top: 15px;
+        right: -30px;
+        background: #ff4757;
+        color: white;
+        padding: 4px 30px;
+        font-size: 10px;
+        font-weight: 700;
+        transform: rotate(45deg);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        z-index: 2;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+
+    .harga-promo-container {
+        background: #fff9e6;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 8px;
+        margin-top: 8px;
+    }
+
+    .diskon-badge {
+        background: #ff6b6b;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        margin-left: 4px;
+    }
 </style>
 
 <div class="p-6 min-h-screen bg-white">
@@ -179,9 +235,35 @@
 
                 $hargaAsli = $item->harga;
                 
-                // Logika promo sesuai dengan LayananResource
-                $adaPromo = $item->is_promo && $item->promo;
-                $hargaPromo = $adaPromo ? ($hargaAsli - ($hargaAsli * $item->promo->diskon / 100)) : null;
+                // Cek promo aktif dengan validasi tanggal
+                $adaPromo = false;
+                $hargaPromo = null;
+                $promoAktif = null;
+                $diskonPersen = 0;
+
+                if ($item->is_promo && $item->promo) {
+                    $promo = $item->promo;
+                    $sekarang = Carbon::now();
+                    
+                    // Cek apakah promo masih aktif berdasarkan tanggal
+                    if ($promo->tanggal_mulai && $promo->tanggal_selesai) {
+                        $tanggalMulai = Carbon::parse($promo->tanggal_mulai);
+                        $tanggalSelesai = Carbon::parse($promo->tanggal_selesai);
+                        
+                        if ($sekarang->between($tanggalMulai, $tanggalSelesai)) {
+                            $adaPromo = true;
+                            $promoAktif = $promo;
+                            $diskonPersen = $promo->diskon;
+                            $hargaPromo = $hargaAsli - ($hargaAsli * $diskonPersen / 100);
+                        }
+                    } else {
+                        // Jika tidak ada tanggal, anggap promo aktif
+                        $adaPromo = true;
+                        $promoAktif = $promo;
+                        $diskonPersen = $promo->diskon;
+                        $hargaPromo = $hargaAsli - ($hargaAsli * $diskonPersen / 100);
+                    }
+                }
                 
                 // Parse tipe layanan
                 $tipeLayanan = $item->tipe_layanan;
@@ -252,6 +334,16 @@
             ?>
 
             <div class="layanan-card">
+                
+                <?php if($adaPromo): ?>
+                    <div class="promo-badge">
+                        🔥 PROMO <?php echo e($diskonPersen); ?>%
+                    </div>
+                    <div class="promo-ribbon">
+                        PROMO
+                    </div>
+                <?php endif; ?>
+
                 
                 <?php if($item->gambar && Storage::disk('public')->exists($item->gambar)): ?>
                     <img src="<?php echo e(asset('storage/' . $item->gambar)); ?>" alt="<?php echo e($item->nama); ?>" class="object-cover">
@@ -363,22 +455,32 @@
                     
                     <div class="harga-container">
                         <?php if($adaPromo): ?>
-                            <div class="text-center">
-                                <div class="text-purple-700 font-bold text-base">
+                            <div class="harga-promo-container text-center">
+                                <div class="text-purple-700 font-bold text-lg">
                                     Rp <?php echo e(number_format($hargaPromo, 0, ',', '.')); ?>
 
                                 </div>
-                                <div class="text-sm text-gray-400 line-through">
+                                <div class="text-sm text-gray-500 line-through">
                                     Rp <?php echo e(number_format($hargaAsli, 0, ',', '.')); ?>
 
                                 </div>
                                 <div class="text-xs text-green-600 font-semibold mt-1">
-                                    🔥 Diskon <?php echo e($item->promo->diskon); ?>%
-                                    <?php if($item->promo->nama_promo): ?>
-                                        - <?php echo e($item->promo->nama_promo); ?>
+                                    💰 Hemat Rp <?php echo e(number_format($hargaAsli - $hargaPromo, 0, ',', '.')); ?>
 
-                                    <?php endif; ?>
+                                    <span class="diskon-badge"><?php echo e($diskonPersen); ?>% OFF</span>
                                 </div>
+                                <?php if($promoAktif->nama_promo): ?>
+                                    <div class="text-xs text-orange-600 font-medium mt-1">
+                                        🎁 <?php echo e($promoAktif->nama_promo); ?>
+
+                                    </div>
+                                <?php endif; ?>
+                                <?php if($promoAktif->tanggal_selesai): ?>
+                                    <div class="text-xs text-red-500 font-medium mt-1">
+                                        ⏳ Berakhir: <?php echo e(Carbon::parse($promoAktif->tanggal_selesai)->format('d M Y')); ?>
+
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         <?php else: ?>
                             <div class="text-gray-800 font-semibold text-base text-center">
@@ -390,9 +492,9 @@
 
                     
                     <a href="<?php echo e(route('customer.booking.create', ['service_id' => $item->id])); ?>" 
-   class="mt-3 bg-purple-600 hover:bg-purple-700 text-white text-center py-2 px-4 rounded-md text-sm font-medium transition-colors block">
-    📅 Booking Sekarang
-</a>
+                       class="mt-3 bg-purple-600 hover:bg-purple-700 text-white text-center py-2 px-4 rounded-md text-sm font-medium transition-colors block">
+                        📅 Booking Sekarang
+                    </a>
                 </div>
             </div>
         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
@@ -408,15 +510,17 @@
     <?php endif; ?>
 
     
-    <div class="max-w-6xl mx-auto mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 class="font-semibold text-blue-800 mb-2">ℹ️ Informasi Jadwal Operasional</h3>
-        <div class="text-sm text-blue-700 space-y-1">
-            <p>• Setiap layanan memiliki jadwal operasional yang berbeda-beda</p>
-            <p>• Hari operasional ditampilkan dalam bentuk singkatan (Sen, Sel, Rab, dll)</p>
-            <p>• Jam operasional menunjukkan waktu pelayanan tersedia</p>
-            <p>• Periode operasional menunjukkan rentang waktu layanan aktif</p>
+    <?php if($layanan->where('is_promo', true)->count() > 0): ?>
+        <div class="max-w-6xl mx-auto mt-8 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg p-4">
+            <h3 class="font-semibold text-purple-800 mb-2">🎉 Promo Spesial Berlangsung!</h3>
+            <div class="text-sm text-purple-700 space-y-1">
+                <p>• Diskon spesial berlaku untuk layanan tertentu</p>
+                <p>• Harga promo sudah termasuk diskon</p>
+                <p>• Promo berlaku dalam periode waktu terbatas</p>
+                <p>• Book sekarang untuk mendapatkan harga terbaik!</p>
+            </div>
         </div>
-    </div>
+    <?php endif; ?>
 </div>
 
 <script>
