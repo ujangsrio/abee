@@ -16,6 +16,7 @@ class Promo extends Model
         'diskon',
         'hanya_member',
         'tanggal_berakhir',
+        'status',
     ];
 
     protected $casts = [
@@ -25,5 +26,11 @@ class Promo extends Model
     public function layanans()
     {
         return $this->hasMany(Layanan::class, 'promo_id');
+    }
+    public function updateStatusIfExpired()
+    {
+        if ($this->tanggal_berakhir->isPast() && $this->status === 'aktif') {
+            $this->update(['status' => 'nonaktif']);
+        }
     }
 }
